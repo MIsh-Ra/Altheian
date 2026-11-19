@@ -1,17 +1,19 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.exceptions import RequestValidationError
 from contextlib import asynccontextmanager
 
-from app.api import documents, reports, auth, admin
-from app.core.exceptions import AlethianException, alethian_exception_handler, validation_exception_handler
+from app.api import admin, auth, documents, reports
+from app.core.exceptions import (
+    AlethianException,
+    alethian_exception_handler,
+    validation_exception_handler,
+)
 from app.core.logging import setup_logging
-
+from app.core.rate_limit import limiter
+from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-
-from app.core.rate_limit import limiter
 
 # Activate structured logging
 setup_logging()
@@ -43,6 +45,14 @@ app.include_router(documents.router, prefix="/api/v1/documents", tags=["Document
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 
-@app.get("/")
-def read_root():
-    return {"message": "Alethian API is running"}
+from pathlib import Path
+
+from fastapi.staticfiles import StaticFiles
+
+_frontend_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+if _frontend_dist.exists():
+    app.mount("/", StaticFiles(directory=str(_frontend_dist), html=True), name="frontend")
+else:
+    @app.get("/")
+    def read_root():
+        return {"message": "Alethian API is running"}
