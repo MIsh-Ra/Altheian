@@ -1,8 +1,13 @@
 import os
+import sys
+
+# Ensure backend directory is in sys.path for prefork worker subprocesses
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+
 import json
-from celery import Celery
-import time
+
 import redis as _redis
+from celery import Celery
 
 redis_url = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1")
 
@@ -23,14 +28,22 @@ celery_app.conf.update(
 
 @celery_app.task(bind=True, name="analyze_document")
 def analyze_document(self, document_id: str, file_path: str):
-    from app.db.session import SessionLocal
-    from app.db.models import Document, DocumentStatus, Report, Match, Source, HeatmapPage
-    from app.core.similarity import run_similarity, index_document
-    from app.core.web_dragnet import run_dragnet
-    from app.core.report_engine import calculate_originality, generate_heatmap
-    from app.core.text_extraction import extract_text_from_pdf
-    from app.core.config import settings
     import logging
+
+    from app.core.config import settings
+    from app.core.report_engine import calculate_originality, generate_heatmap
+    from app.core.similarity import index_document, run_similarity
+    from app.core.text_extraction import extract_text_from_pdf
+    from app.core.web_dragnet import run_dragnet
+    from app.db.models import (
+        Document,
+        DocumentStatus,
+        HeatmapPage,
+        Match,
+        Report,
+        Source,
+    )
+    from app.db.session import SessionLocal
 
     logger = logging.getLogger(__name__)
     db = SessionLocal()
@@ -39,10 +52,10 @@ def analyze_document(self, document_id: str, file_path: str):
     try:
         _status_redis = _redis.Redis(
             host=os.getenv("REDIS_HOST", "localhost"),
-            port=int(os.getenv("REDIS_PORT", 6379)),
+            port=int(os.getenv("REDIS_PORT", "6379")),
             decode_responses=True
         )
-    except Exception:
+    except Exception:  # noqa: BLE001
         _status_redis = None
 
     def broadcast_status(stage: str, progress: int, message: str = ""):
@@ -52,7 +65,7 @@ def analyze_document(self, document_id: str, file_path: str):
                     f"doc_status:{document_id}",
                     json.dumps({"stage": stage, "progress": progress, "message": message})
                 )
-            except Exception:
+            except Exception:  # noqa: BLE001, S110
                 pass
 
     try:
@@ -74,11 +87,15 @@ def analyze_document(self, document_id: str, file_path: str):
         broadcast_status("ingesting", 10, "Parsing PDF with Grobid...")
 
         parsed = extract_text_from_pdf(file_path, grobid_url=settings.GROBID_URL)
-        text = parsed.get("body_text", "")
+        text = parsed.get("body_text", "").replace("\x00", "")
         page_texts = parsed.get("page_texts", [])        # [{page, text, char_start, char_end}]
+        if page_texts:
+            for pt in page_texts:
+                if isinstance(pt, dict) and "text" in pt:
+                    pt["text"] = str(pt["text"]).replace("\x00", "")
         page_boundaries = parsed.get("page_boundaries", [])  # [(char_start, char_end, page_num)]
 
-        doc.title = str(parsed.get("title", doc.title))[:250]
+        doc.title = str(parsed.get("title", doc.title)).replace("\x00", "")[:250]
         doc.page_count = parsed.get("page_count", 1)
 
         if not text or len(text.strip()) < 50:
@@ -166,7 +183,7 @@ def analyze_document(self, document_id: str, file_path: str):
                 continue
             ms = source_matches[key]
             src_obj.match_count = len(ms)
-            src_obj.pages_affected = sorted(set(m.get("submitted_page", 1) for m in ms))
+            src_obj.pages_affected = sorted({m.get("submitted_page", 1) for m in ms})
             # coverage = sum of matched words / total doc words
             total_matched_words = sum(len(m.get("submitted_text", "").split()) for m in ms)
             src_obj.coverage_percent = round(
@@ -220,14 +237,14 @@ def analyze_document(self, document_id: str, file_path: str):
 
         broadcast_status("complete", 100, "Analysis complete.")
 
-    except Exception as e:
-        logger.error(f"Failed worker operation: {e}", exc_info=True)
+    except Exception:
+        logger.exception("Failed worker operation")
         db.rollback()
 
         # Rollback Qdrant inserts
         try:
             from app.core.similarity import _get_qdrant
-            from qdrant_client.models import Filter, FieldCondition, MatchValue
+            from qdrant_client.models import FieldCondition, Filter, MatchValue
             qdrant = _get_qdrant()
             if qdrant:
                 qdrant.client.delete(
@@ -236,7 +253,7 @@ def analyze_document(self, document_id: str, file_path: str):
                         must=[FieldCondition(key="document_id", match=MatchValue(value=document_id))]
                     )
                 )
-        except Exception as delete_ex:
+        except Exception as delete_ex:  # noqa: BLE001
             logger.error(f"Failed to rollback Qdrant changes: {delete_ex}")
 
         try:
@@ -244,8 +261,8 @@ def analyze_document(self, document_id: str, file_path: str):
             if doc:
                 doc.status = DocumentStatus.failed
                 db.commit()
-        except Exception:
+        except Exception:  # noqa: BLE001, S110
             pass
-        raise e
+        raise
     finally:
         db.close()

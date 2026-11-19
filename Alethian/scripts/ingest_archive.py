@@ -77,7 +77,7 @@ def process_and_index(filepath: str, metadata: dict[str, Any], db_session: Any) 
 
     # Extract text via 3-tier fallback
     parsed = extract_text_from_pdf(filepath)
-    body_text = parsed.get("body_text", "")
+    body_text = parsed.get("body_text", "").replace("\x00", "")
 
     if not body_text or len(body_text.strip()) < 50:
         logger.warning(
@@ -86,17 +86,17 @@ def process_and_index(filepath: str, metadata: dict[str, Any], db_session: Any) 
         )
         return None
 
-    title = metadata.get("title") or metadata.get("dc_title") or parsed.get("title", "Unknown Title")
+    title = str(metadata.get("title") or metadata.get("dc_title") or parsed.get("title", "Unknown Title")).replace("\x00", "")
     authors = metadata.get("authors") or metadata.get("dc_creator", "Unknown")
     page_count = parsed.get("page_count", 1)
 
-    author_str = ", ".join(authors) if isinstance(authors, list) else str(authors) if authors else "Unknown"
+    author_str = str(", ".join(authors) if isinstance(authors, list) else str(authors) if authors else "Unknown").replace("\x00", "")
 
     # Create Document row in Postgres
     doc = Document(
         id=doc_id,
-        title=title,
-        author=author_str,
+        title=title[:250],
+        author=author_str[:250],
         filename=filename,
         status=DocumentStatus.complete,
         upload_date=datetime.datetime.now(datetime.UTC),
@@ -109,8 +109,13 @@ def process_and_index(filepath: str, metadata: dict[str, Any], db_session: Any) 
             "confidence": parsed.get("confidence", 0.0),
         },
     )
-    db_session.add(doc)
-    db_session.flush()
+    try:
+        db_session.add(doc)
+        db_session.flush()
+    except Exception as e:  # noqa: BLE001
+        db_session.rollback()
+        logger.error(f"[FAIL] Postgres insert failed for {filename}: {e}")
+        return None
 
     # Index into Qdrant
     try:
