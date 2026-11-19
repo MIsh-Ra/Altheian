@@ -5,7 +5,7 @@ services:
   # Data Layer
   # -------------------------------------------------------------------------
   postgres:
-    image: postgres:15-alpine
+    image: postgres:15-bookworm
     container_name: alethian_postgres
     restart: unless-stopped
     env_file:
