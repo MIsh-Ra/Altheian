@@ -1,4 +1,5 @@
 import re
+
 from app.core.embeddings import generate_embeddings_batch
 
 # Minimum number of real (alphabetic) words a chunk must contain to be indexed/matched.
@@ -56,13 +57,26 @@ def process_text_into_chunks(text, page_boundaries=None, page_count=1):
 
         page = 1
         char_start = text.find(w, search_offset)
-        if char_start == -1:
-            # Edge case: window text was normalised differently than source.
-            # Fall back to searching from the beginning.
+        if char_start != -1:
+            char_end = char_start + len(w)
+        else:
             char_start = text.find(w)
+            if char_start != -1:
+                char_end = char_start + len(w)
+            else:
+                tokens = w.split()
+                if tokens:
+                    try:
+                        pat = re.compile(r"\s+".join(re.escape(tok) for tok in tokens))
+                        m = pat.search(text, search_offset) or pat.search(text)
+                        if m:
+                            char_start, char_end = m.span()
+                    except Exception:  # noqa: BLE001, S110
+                        pass
+
         if char_start == -1:
             continue  # Skip windows that can't be located in source text
-        char_end = char_start + len(w)
+
         search_offset = char_start + 1  # Advance past this match
         
         if page_boundaries:
