@@ -1,0 +1,711 @@
+{
+  "version": "1.0",
+  "created_at": "2026-11-19T14:56:41.423188+00:00",
+  "total_documents": 50,
+  "categories_breakdown": {
+    "complex_layout": 10,
+    "research_paper": 15,
+    "btp_report": 25
+  },
+  "documents": [
+    {
+      "filename": "515__28BY12_20045_29.pdf",
+      "title": "Politeness in Email Communication: A study of sociolinguistic variables w.r.t Gender and Power status",
+      "authors": [
+        "Soni, Mohit Kumar",
+        "Yadav, Kartikeya"
+      ],
+      "date": "2016-07",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/515",
+      "category": "complex_layout",
+      "qa_role": "extraction_benchmark",
+      "file_size_bytes": 102937507,
+      "sha256": "2552f35dabae55ab0126560e0dc09d6fe40c0ce1818b46823082e05c2504f8f6"
+    },
+    {
+      "filename": "363__28MT13_20009_29.pdf",
+      "title": "Single Channel Speech Enhancement: Using Wiener Filtering With Recursive Averaging Based Noise Estimation",
+      "authors": [
+        "Jaiswal, Rahul Kumar"
+      ],
+      "date": "2015-07",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/363",
+      "category": "complex_layout",
+      "qa_role": "extraction_benchmark",
+      "file_size_bytes": 100643277,
+      "sha256": "a95ba4cc882672e432bcaf0e8db95a201d4c86326cdeb67a043deeb2766c5773"
+    },
+    {
+      "filename": "1605_2020-21_20Odd_ET_ECE_IGCN.pdf",
+      "title": "Introduction to Green Communication and Networking (ECE3031) - End Term",
+      "authors": [
+        "Karamkar, Purendu"
+      ],
+      "date": "2020-12",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1605",
+      "category": "complex_layout",
+      "qa_role": "extraction_benchmark",
+      "file_size_bytes": 47463763,
+      "sha256": "d48bb5fc2af17e54fb3233df92d914cb976fcdde3f307aaae6c610a192381a36"
+    },
+    {
+      "filename": "1591_2020-21_20Odd_ET_CSE_CC.pdf",
+      "title": "Cloud Computing (CSE4081) - End Term",
+      "authors": [
+        "Chaturvedi, Animesh"
+      ],
+      "date": "2020-12",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1591",
+      "category": "complex_layout",
+      "qa_role": "extraction_benchmark",
+      "file_size_bytes": 45631359,
+      "sha256": "92dac3f02fbf12b0e5542562d6e6013de75201db7a80f6e13d8d052cd4b237a8"
+    },
+    {
+      "filename": "604__28MT14_20012_29.pdf",
+      "title": "Time Series based Spectrum Occupancy Prediction in Cognitive Radio Networks",
+      "authors": [
+        "Sengar, Aditya Singh"
+      ],
+      "date": "2016-07",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/604",
+      "category": "complex_layout",
+      "qa_role": "extraction_benchmark",
+      "file_size_bytes": 43276612,
+      "sha256": "77877bb3673a680ae8cd1252a20ee3ee8f14f922b5ad12eef51a2fc1bee16863"
+    },
+    {
+      "filename": "1028_2018-19_20Even_MT_CSE_DSY.pdf",
+      "title": "Digital Systems (CSE111) - Mid Term",
+      "authors": [
+        "Jain, Puneet",
+        "Kumar, Sunil"
+      ],
+      "date": "2019-03",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1028",
+      "category": "complex_layout",
+      "qa_role": "extraction_benchmark",
+      "file_size_bytes": 43021350,
+      "sha256": "6c400fc9ab37c9594b102198634f9a985c459faa7bf9a7540944220564b1bec6"
+    },
+    {
+      "filename": "949_2018-19_20Even_MT_PHY_MEDPHY.pdf",
+      "title": "Medical Physics (PHY7102) - Mid Term",
+      "authors": [
+        "Neogi, Amit"
+      ],
+      "date": "2019-3",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/949",
+      "category": "complex_layout",
+      "qa_role": "extraction_benchmark",
+      "file_size_bytes": 43017810,
+      "sha256": "57ba29b6e583df45231519966db1b2967678607ac21df95590b5aa851b386f0b"
+    },
+    {
+      "filename": "952_2018-19_20Even_MT_PHY_CMP_201.pdf",
+      "title": "Condensed Matter Physics I (PHY6022) - Mid Term",
+      "authors": [
+        "Biswas, Subhayan"
+      ],
+      "date": "2019-03",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/952",
+      "category": "complex_layout",
+      "qa_role": "extraction_benchmark",
+      "file_size_bytes": 43017805,
+      "sha256": "b2a3f3a6f65ec8eb17494064f34c148227f4eff3b1cecab830dd95db3905bd7c"
+    },
+    {
+      "filename": "953_2018-19_20Even_MT_PHY_BME.pdf",
+      "title": "Bio-Medical Engineering (PHY3022) - Mid Term",
+      "authors": [
+        "Neogi, Amit"
+      ],
+      "date": "2019-03",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/953",
+      "category": "complex_layout",
+      "qa_role": "extraction_benchmark",
+      "file_size_bytes": 43017805,
+      "sha256": "2ed2b5eab25ca976a7f69eb1549dfd79f7b1b58ebefad9b300b2490974da0acf"
+    },
+    {
+      "filename": "979_2018-19_20Even_MT_HSS_VEE_20_283_29.pdf",
+      "title": "Value Education and Ethics (HSS102) - Mid Term",
+      "authors": [
+        "Kumar, Narendra",
+        "Dhariwal, Manju",
+        "Singh, A.P."
+      ],
+      "date": "2019-02",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/979",
+      "category": "complex_layout",
+      "qa_role": "extraction_benchmark",
+      "file_size_bytes": 43017549,
+      "sha256": "69fa2d37705a9672c70b180df64b2029409f8ece291258ab1af2aa046317aa05"
+    },
+    {
+      "filename": "380__28MT11_20006_29.pdf",
+      "title": "The use of defected ground structures in designing micro strip filters with enhanced performance characteristics",
+      "authors": [
+        "Singh, Pragya"
+      ],
+      "date": "2015-07",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/380",
+      "category": "research_paper",
+      "qa_role": "negative_control",
+      "file_size_bytes": 2070247,
+      "sha256": "0e62ed7751d64904fcb6a41edb39fe7a0f89a17df9e6414b60b929fda831d2bf"
+    },
+    {
+      "filename": "711_17mph503_3b_2010.pdf",
+      "title": "Ginzburg Landau theory for a superconducting disk",
+      "authors": [
+        "Tyagi, Ram Naresh (17MPH503)"
+      ],
+      "date": "2019-06",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/711",
+      "category": "research_paper",
+      "qa_role": "negative_control",
+      "file_size_bytes": 2061662,
+      "sha256": "e554b9b934d934cb583bf3413c0e74f5e2dcc2b56b0a9e5efcac1db3b3786920"
+    },
+    {
+      "filename": "750_Ekanki.pdf",
+      "title": "Absolute quality of service (QoS) provisioning in asynchronous optical  packet  switched networks",
+      "authors": [
+        "Sharma, Ekanki"
+      ],
+      "date": "2012-11",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/750",
+      "category": "research_paper",
+      "qa_role": "negative_control",
+      "file_size_bytes": 2052736,
+      "sha256": "cd81aee55bbc3146997d830cd7e4792ae833c571e2cf4109ce75cadce33c6dfa"
+    },
+    {
+      "filename": "435__28BY09_20018_29.pdf",
+      "title": "Implementation of Low Power Transmission Gate Full Adder Design Using CMOS Nano Technology",
+      "authors": [
+        "Agarwal, Ashutosh"
+      ],
+      "date": "2015-07",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/435",
+      "category": "research_paper",
+      "qa_role": "negative_control",
+      "file_size_bytes": 2048477,
+      "sha256": "6cf07c55859121fd2cd4b1df28f67938bc98beb0c2c81b72f5e1dd9e9c799405"
+    },
+    {
+      "filename": "1641_2020-21_20Odd_ET_PHY_POU.pdf",
+      "title": "Physics of the Universe (PHY4042) - End Term",
+      "authors": [
+        "Singh, Anupam"
+      ],
+      "date": "2020-12",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1641",
+      "category": "research_paper",
+      "qa_role": "negative_control",
+      "file_size_bytes": 2025555,
+      "sha256": "0ff10a58a446c738047fa1d07cdb1f9b71f9fb0d633f8f1654c7f73a3c1ab2c5"
+    },
+    {
+      "filename": "556__28BY12_20087_29.pdf",
+      "title": "Indoor Localization using- National Instruments MyRIO Board",
+      "authors": [
+        "Garg, Anshul",
+        "Yadav, Shikhar",
+        "Sharma, Aditya"
+      ],
+      "date": "2016-07",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/556",
+      "category": "research_paper",
+      "qa_role": "negative_control",
+      "file_size_bytes": 2023119,
+      "sha256": "28e1575efd9a4256eea9911386e57c4505f751a715af3580de25aa035fd9afc3"
+    },
+    {
+      "filename": "340__28BY11_20095_29.pdf",
+      "title": "Developing a faster algorithm/implementation for deduplicating data on digital storage device",
+      "authors": [
+        "Gupta, Abhinav"
+      ],
+      "date": "2015-07",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/340",
+      "category": "research_paper",
+      "qa_role": "negative_control",
+      "file_size_bytes": 2004428,
+      "sha256": "1d9e72c83e7c311c93390eb80c7e95c0483ecbf7b5ba609814643b1c35899fa4"
+    },
+    {
+      "filename": "278__28BY11_20028_29.pdf",
+      "title": "EASIC: EDoS aware auto-scaling in cloud",
+      "authors": [
+        "Johri, Abhinav",
+        "Taneja, Mohit",
+        "Pyne, Utkarsh"
+      ],
+      "date": "2015-07",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/278",
+      "category": "research_paper",
+      "qa_role": "negative_control",
+      "file_size_bytes": 1994973,
+      "sha256": "76e274c65e2f3164627fead4413766618c759a0ab56ba0bc79a739a5d0ce081f"
+    },
+    {
+      "filename": "1700_PhD_20Bulletin_15.pdf",
+      "title": "Bibliographic information of Ph. D. awarded students till the year 2020",
+      "authors": [
+        "LNMIIT, Jaipur"
+      ],
+      "date": "2020",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1700",
+      "category": "research_paper",
+      "qa_role": "negative_control",
+      "file_size_bytes": 1991143,
+      "sha256": "45784157da8e1d4270a4366402d171792f5020630d24f2eddc210ba715d43cce"
+    },
+    {
+      "filename": "1536_2020-21_20Odd_MT_CSE_MSE.pdf",
+      "title": "Mathematical Structures for Engineers (CSE6011) - Mid Term",
+      "authors": [
+        "Gupta, C.B."
+      ],
+      "date": "2020-10",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1536",
+      "category": "research_paper",
+      "qa_role": "negative_control",
+      "file_size_bytes": 1987486,
+      "sha256": "217d8f6fd1762ecb4330fefbfbec54f5ca8e0185908d7ca6035e493960cbf2a4"
+    },
+    {
+      "filename": "290__28BY11_20041_29.pdf",
+      "title": "Statistical Analysis on Airline Data using Hadoop MapReduce and R",
+      "authors": [
+        "Saurabh, Suman",
+        "Rawani, Subodh",
+        "Mittal, Sachin",
+        "Kumar, Abhishek"
+      ],
+      "date": "2015-07",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/290",
+      "category": "research_paper",
+      "qa_role": "negative_control",
+      "file_size_bytes": 1948969,
+      "sha256": "0dbac74b5e077595c45e643235c83236686fcebcbcf06e148fba1600713db038"
+    },
+    {
+      "filename": "506__28BY12_20036_29.pdf",
+      "title": "Biomedical Image Classification Using Deep Learning",
+      "authors": [
+        "Patwa, Rohit M"
+      ],
+      "date": "2016-07",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/506",
+      "category": "research_paper",
+      "qa_role": "negative_control",
+      "file_size_bytes": 1942866,
+      "sha256": "1cc8f756a4f806c9a7b111a6acd5d40e8cfb84c8f542eaa395027b2abda06e3a"
+    },
+    {
+      "filename": "421__28BY09_20002_29.pdf",
+      "title": "Design of 2.45 GHz Gilbert Mixer and its Performance Comparison in 45 nm, 65nm and 90nm CMOS Technology",
+      "authors": [
+        "Sharma, Ankit"
+      ],
+      "date": "2015-07",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/421",
+      "category": "research_paper",
+      "qa_role": "negative_control",
+      "file_size_bytes": 1937147,
+      "sha256": "dc879a21d87d6c202d8218af33568bc6199e0d266295a84a92191de3fdc313f0"
+    },
+    {
+      "filename": "567__28BY12_20098_29.pdf",
+      "title": "Cognitive Approaches in Machine Translation",
+      "authors": [
+        "Agarwal, Sarthak",
+        "Bhogal, Shivin Kulyash"
+      ],
+      "date": "2016-07",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/567",
+      "category": "research_paper",
+      "qa_role": "negative_control",
+      "file_size_bytes": 1914399,
+      "sha256": "cc8a0a2a9482ae791ec65d705e4df7ec7b7c1538fab0585eb01486e7947febc9"
+    },
+    {
+      "filename": "919_2019-20_20Odd_ET_CSE_NS.pdf",
+      "title": "Network Security (CSE4151) - End Term",
+      "authors": [
+        "Gera, Poonam"
+      ],
+      "date": "2019-12",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/919",
+      "category": "research_paper",
+      "qa_role": "negative_control",
+      "file_size_bytes": 1906455,
+      "sha256": "cda5716f611616bcefb0f7efac329d43e3772b62444e3ace74058f7f59fbbea3"
+    },
+    {
+      "filename": "1129__2889_2914UEC012_2c_20007_2c_2014UCS129_2c_2014UCC037-151-.pdf",
+      "title": "Analysis of News Feed Impact on Stock Market and Prediction with Effect of Social Synchrony",
+      "authors": [
+        "Jiyani, Sumit Kumar (14UCS129)",
+        "Kashaliwal, Shreyansh (14UCC037)",
+        "Ojha, Anshul (14UEC012)",
+        "Garg, Akul (14UEC007)"
+      ],
+      "date": "2018-05",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1129",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 2094557,
+      "sha256": "6442ccd3e573f1b116f5ddc14b551288883274eec7e234c3e01dac9720edb3fc"
+    },
+    {
+      "filename": "1402_15UEC074_20-_20169.pdf",
+      "title": "Cybersecurity and Behavioral Economics",
+      "authors": [
+        "Singhal, Yaschi (15UEC074)"
+      ],
+      "date": "2019-07",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1402",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 2048950,
+      "sha256": "4c588f765a5e1ac1b0df132c4471438e272e0d19052fd0577090e0c646624294"
+    },
+    {
+      "filename": "1401_15uec053-213.pdf",
+      "title": "Analysis of Emotion Recognition using Speech",
+      "authors": [
+        "Sagar, Sangeet (15uec053)"
+      ],
+      "date": "2018-05",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1401",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 2034450,
+      "sha256": "ed44ce8d34ac3617c562ad39ae425d996ac96dc69db90894d24c5e1bac0ac22f"
+    },
+    {
+      "filename": "1472_16ucc008_3b_2016ucc080_3b_2016ucc095_3b_2016ucs073.pdf",
+      "title": "Leave Application Management System",
+      "authors": [
+        "Aggarwal, Aditya (16ucc008)",
+        "Samudralwar, Rohit (16ucc080)",
+        "Agarwal, Srishti (16ucc095)",
+        "Upadhyay, Harsh (16ucs073)"
+      ],
+      "date": "2020-09",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1472",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 2026545,
+      "sha256": "107a226f90d2c4c93ba1042348a71f6b619d0e864cc3870ba0e13cf5e6a7c92a"
+    },
+    {
+      "filename": "1141__28102_2914UEC033-023.pdf",
+      "title": "FPGA Implementation of Facial emotion recognition Algorithms",
+      "authors": [
+        "Acharya, Siddharth (14UEC102)",
+        "Jain, Harsh (14UEC033)"
+      ],
+      "date": "2017-04",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1141",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 2023609,
+      "sha256": "742642a60a4a44cd81e647fc2d18111d39725362b382d495b8d547e5d1f5f64c"
+    },
+    {
+      "filename": "1398_15UEC027_2c_2015UCS138_2c_2015UCS053-38_2c_2095_2c_20174.pdf",
+      "title": "Layout Analysis Of Document Images For Information Extraction And Management",
+      "authors": [
+        "Soma, Hitakshi (15UEC027)",
+        "Shrimali, Himanshu (15UCS053)",
+        "Mangal, Shubham (15UCS138)"
+      ],
+      "date": "2019-05",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1398",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 2020766,
+      "sha256": "557152148e2a2e9c0911aa10d583bf520b0ff06f686e2d85723e148d765ee414"
+    },
+    {
+      "filename": "1125__2884_2914UEC006-225.pdf",
+      "title": "Semester Long Internship as a UI/UX Design Engineer, JUSPAY",
+      "authors": [
+        "Bindal, Akshansh (14UEC006)"
+      ],
+      "date": "2018-04",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1125",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 2001314,
+      "sha256": "d6fc981ccb265e65bfd1254fbcce76a0abd331daea0c7e0213154cdb62d94080"
+    },
+    {
+      "filename": "716__283_20_2914UCC003_2c_2014UEC013_2c_2014UCS105-133_2c_20134_2c_20135.pdf",
+      "title": "The latest techniques of reducing production costs in electronics industry",
+      "authors": [
+        "Maheshwari, Akhilesh (14UCC003)",
+        "Gupta, Anuj (14UEC013)",
+        "Jindal, Shailesh (14UCS105)"
+      ],
+      "date": "2018-05",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/716",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 1980758,
+      "sha256": "82ebf2253b3283f7af6fa9005f11e857ef43895bdf898374b2d837c0541ba2ea"
+    },
+    {
+      "filename": "1132__2892_2914UEC015-_20043.pdf",
+      "title": "Data Traceability: journey towards achieving 95 percent across the company for all types of components used",
+      "authors": [
+        "Goyal, Arpan (14UEC015)"
+      ],
+      "date": "2018-04",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1132",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 1966218,
+      "sha256": "e05ca92631286ce8db4eb0d335de21262acd402710da5f56a327b5e7ba84dbe2"
+    },
+    {
+      "filename": "1149__28121_2914UEC099-060-.pdf",
+      "title": "Smart agriculture device implementation based on iot technology",
+      "authors": [
+        "Gupta, Shubham (14UEC099)"
+      ],
+      "date": "2018-04",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1149",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 1963427,
+      "sha256": "7c967d1b666f8d9ba6b59d83b9ad7f0a685ba2b453b32cc6d59b406fb6c51475"
+    },
+    {
+      "filename": "1383_15UCS039_2c_2015UCS073-54-55.pdf",
+      "title": "Hand written Digit Recognition",
+      "authors": [
+        "Agarwal, Divyanshu (15UCS039)",
+        "Jain, Samkit (15UCS119)",
+        "Sharma, Mehul (15UCS073)"
+      ],
+      "date": "2018-04",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1383",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 1959990,
+      "sha256": "10009f0edc5aa40ae400acd524f7cca05bc4c73f7302051175360086bef83475"
+    },
+    {
+      "filename": "998__28144_29108_2914UEC050_2c_20_2014UCC018_2c_2014UCC009-104_2c_20105_2c_20106.pdf",
+      "title": "Java based middleware for sensor networks",
+      "authors": [
+        "Jain, Lovish (14UCC018)",
+        "Srivastava, Aviral (14UCC009)",
+        "Gupta, Meghna (14UEC050)"
+      ],
+      "date": "2018-04",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/998",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 1958827,
+      "sha256": "95b070654329aeff704b3805ed6e14344892edc2390d7202bd2561ca00c4ae0e"
+    },
+    {
+      "filename": "1085__2852_2914UCS070_2c_2014UEC081-119_2c_20200.pdf",
+      "title": "Weather Station Using IOT",
+      "authors": [
+        "Rastogi, Ayush (14UEC020)",
+        "Bang, Ritwik (14UEC081)",
+        "Mittal, Mudit (14UCS070)"
+      ],
+      "date": "2018-04",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1085",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 1958610,
+      "sha256": "6aba6702e80d26d0f501700f79aa69c4930b7b3b97baa2b8adc48bdaccd9a2f9"
+    },
+    {
+      "filename": "720__287_2914UCC016_2c_2014UEC087_2c_2014UCS093-082_2c_20083-.pdf",
+      "title": "Activity recognition in videos using KTH dataset",
+      "authors": [
+        "Gupta, Lakshya (14UCC016)",
+        "Soni, Sarthak (14UEC087)",
+        "Taneja, Raveesh (14UCS093)"
+      ],
+      "date": "2018-05",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/720",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 1908300,
+      "sha256": "de5f7110094780dcd81c23c1d3b997ecf252368593005730781c810f9398b79e"
+    },
+    {
+      "filename": "1057__2832_2914UCS019_2c_20062_2c_20065_2c113-092_2c_20093_2c_20094_2c_20095.pdf",
+      "title": "Development of learning object repository",
+      "authors": [
+        "Sharma, Shrikant (14UCS113)",
+        "Garg, Anshul (14UCS019)",
+        "Jain, Manish (14UCS062)",
+        "Tariq, Mohd (14UCS065)"
+      ],
+      "date": "2018-04",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1057",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 1904331,
+      "sha256": "92d7162463d439add52b3bbfe9087599701aaab335c544e87052fac3de6ea75c"
+    },
+    {
+      "filename": "1380_15UCC042_2c_2015UCC017_2c_2015UEC036-_20114.pdf",
+      "title": "Analysis of Twitter Hashtags",
+      "authors": [
+        "Sadhwani, Jiten Singh (15UCC017)",
+        "Garg, Mudit (15UEC036)",
+        "Kumar, Yagyansh (15UCC042)"
+      ],
+      "date": "2018-04",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1380",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 1900503,
+      "sha256": "d5bcd0ec4923413bce2527ea4679359f61646d983a0de6acc5071038e83355af"
+    },
+    {
+      "filename": "1509_16ucs001_3b_2016ucc063.pdf",
+      "title": "A Study of Bias in Google Ad System and Personalization in Google Web Search",
+      "authors": [
+        "Shekhawat, Nisha (16ucc063)",
+        "Chauhan, Aakanksha (16ucs001)"
+      ],
+      "date": "2020-09",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1509",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 1898832,
+      "sha256": "bcbc6b13aed62b6bbcaf2062674b28b22cdac2c51f12af8258b0982207ad4cb8"
+    },
+    {
+      "filename": "1385_15ucs048_297.pdf",
+      "title": "Analysis of Attacks in Wireless Ad Hoc Networks",
+      "authors": [
+        "Vemra, Aarush (15ucs003)",
+        "Bishnoi, Harshit (15ucs048)",
+        "Tatiwala, Karan (15ucs059)"
+      ],
+      "date": "2018-12",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1385",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 1889950,
+      "sha256": "f9476bfd90a0a6ff6e557a3f6441573875c38f36f8ba5615b65cb3cf8fef562e"
+    },
+    {
+      "filename": "992__2813_2914UCC026_2c_2014UCS119_2c_2014UEC077-186_20Up_20dated_20btp.pdf",
+      "title": "Collecting and Representing the Tweets of 500 Users and their Friends",
+      "authors": [
+        "Mittal, Shubham (14UCS119)",
+        "Newatia, Rajat (14UEC077)",
+        "Gupta, Pranav (14UCC026)"
+      ],
+      "date": "2017-04",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/992",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 1872859,
+      "sha256": "b90e307925e9e118bcbb278324b21e87892fbd3bed111466e7c725509bae0cd9"
+    },
+    {
+      "filename": "1131__2891_2914UEC014-121.pdf",
+      "title": "Productivity improvement in PTH (Plated through hole) area",
+      "authors": [
+        "Agarwal, Anusha (14UEC014)"
+      ],
+      "date": "2018-05",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1131",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 1862998,
+      "sha256": "a9a96125818332ec97589551db232610761b249ce97e25f1aac2ea37dadd1620"
+    },
+    {
+      "filename": "305__28BY11_20057_29.pdf",
+      "title": "Project U-boot",
+      "authors": [
+        "Chaitanya, K Ganesh"
+      ],
+      "date": "2015-07",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/305",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 1847712,
+      "sha256": "901f3143397d97c7a9bcf8022a900db71bb2f33a607c4719b23841282bb3b528"
+    },
+    {
+      "filename": "1817_17ucc015_2c_2017ucc031_2c_2017ucc053.pdf",
+      "title": "Analysis of Kernel Function for- Dimensionality Reduction And Classification of Hyperspectral Images",
+      "authors": [
+        "Mahlawat, Arpit (17ucc015 )",
+        "Chaudhary, Khush ( 17ucc031 )",
+        "Agrawal, Sanchit (17ucc053 )"
+      ],
+      "date": "2021-09",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1817",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 1843569,
+      "sha256": "f4189a7a7a9f770903865c90de08fe1b4412bc77ae2ba10e09db7a6ef63bd5f7"
+    },
+    {
+      "filename": "723__2810_2914UCC021_2c_2014UCS015-.268_2c269.pdf",
+      "title": "Cloud security",
+      "authors": [
+        "Bishnoi, Ankita (14ucs015)",
+        "Kumari, Neha (14ucc021)"
+      ],
+      "date": "2018-05",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/723",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 1839880,
+      "sha256": "c90094d0cd192389fa72dabe0de515501fd399e59460694e815ebdc852649693"
+    },
+    {
+      "filename": "1671_16UCS083_3b_2016ucs147_3b_2016ucs148_3b_2016ucs150.pdf",
+      "title": "Sarcasm Detection using Emotion Recognition",
+      "authors": [
+        "Gupta, Jeetesh Kumar (16ucs083)",
+        "Laddha, Raghav (16ucs147)",
+        "Asnani, Rahul (16ucs148)",
+        "Chowdhury, Rahul (16ucs150)"
+      ],
+      "date": "2020-01",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1671",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 1829332,
+      "sha256": "5aa6925063ad2b2ec7ac027fd6529b8c27cb6bfe4e6c83309cc7d664b4c45031"
+    },
+    {
+      "filename": "1394_15uec005_15uec045_15uec048_20-_2023_2c_2024_2c_2025.pdf",
+      "title": "Optimal Multi-Cell system design with Zero Forcing in 5G scenario",
+      "authors": [
+        "Gupta, Adit (15UEC005)",
+        "Garg, Pulkit (15UEC045)",
+        "Ojha, Rishabh (15UEC048)"
+      ],
+      "date": "2019-05",
+      "source_url": "http://172.22.2.20:8080/jspui/handle/123456789/1394",
+      "category": "btp_report",
+      "qa_role": "paraphrase_candidate",
+      "file_size_bytes": 1801499,
+      "sha256": "63b1e08f5f48fdf967ca5579bfc63fe48c74557eeab596c62ae29616124f512d"
+    }
+  ]
+}
