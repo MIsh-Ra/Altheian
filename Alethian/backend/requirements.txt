@@ -9,6 +9,7 @@ celery
 redis
 sqlalchemy
 psycopg2-binary
+psycopg[binary]
 pytest
 httpx
 pydantic-settings
