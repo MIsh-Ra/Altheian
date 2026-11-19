@@ -110,13 +110,17 @@ def run_qa_suite(
     # Poll status
     h_start = time.time()
     h_status = "pending"
-    while time.time() - h_start < 120:
+    last_log_time = h_start
+    while time.time() - h_start < 360:
         doc_res = session.get(f"{api_url}/api/v1/documents/{holdout_doc_id}", headers=headers)
         if doc_res.status_code == 200:
             h_status = doc_res.json().get("status")
             if h_status in ("complete", "failed"):
                 break
-        time.sleep(2)
+            if time.time() - last_log_time >= 15:
+                logger.info(f"Holdout doc still analyzing... ({int(time.time() - h_start)}s elapsed, status={h_status})")
+                last_log_time = time.time()
+        time.sleep(3)
 
     logger.info(f"Holdout document analysis finished with status: {h_status}")
     if h_status != "complete":
@@ -156,13 +160,17 @@ def run_qa_suite(
     # Poll status
     c_start = time.time()
     c_status = "pending"
-    while time.time() - c_start < 120:
+    last_log_time = c_start
+    while time.time() - c_start < 360:
         doc_res2 = session.get(f"{api_url}/api/v1/documents/{corpus_doc_id}", headers=headers)
         if doc_res2.status_code == 200:
             c_status = doc_res2.json().get("status")
             if c_status in ("complete", "failed"):
                 break
-        time.sleep(2)
+            if time.time() - last_log_time >= 15:
+                logger.info(f"Corpus doc still analyzing... ({int(time.time() - c_start)}s elapsed, status={c_status})")
+                last_log_time = time.time()
+        time.sleep(3)
 
     logger.info(f"Corpus document analysis finished with status: {c_status}")
     if c_status != "complete":
