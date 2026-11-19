@@ -150,13 +150,14 @@ def ingest_from_crawler_dir(
     indexed_count = 0
     skipped_count = 0
     holdout_excluded_count = 0
+    processed_files: set[str] = set()
 
     for i, meta in enumerate(metadata_list, 1):
         if limit and indexed_count >= limit:
             logger.info(f"Reached ingestion limit of {limit} documents.")
             break
 
-        files = meta.get("files", [])
+        files = list(dict.fromkeys(meta.get("files", [])))
         for f in files:
             p = Path(f)
             actual_path = crawler_dir / p.name if not p.is_absolute() else p
@@ -165,6 +166,10 @@ def ingest_from_crawler_dir(
 
             if not actual_path.exists():
                 continue
+
+            if actual_path.name in processed_files:
+                continue
+            processed_files.add(actual_path.name)
 
             if actual_path.name in holdout_filenames:
                 logger.info(f"[EXCLUDE-HOLDOUT] Skipping {actual_path.name} (reserved for QA/Test benchmark)")
@@ -184,6 +189,32 @@ def ingest_from_crawler_dir(
             f"Indexed={indexed_count} | Skipped={skipped_count} | HoldoutExcluded={holdout_excluded_count}"
         )
         sys.stdout.flush()
+
+    # Index any additional uncataloged PDFs in the directory
+    for pdf_path in sorted(crawler_dir.glob("*.pdf")):
+        if limit and indexed_count >= limit:
+            break
+        if pdf_path.name in processed_files:
+            continue
+        processed_files.add(pdf_path.name)
+
+        if pdf_path.name in holdout_filenames:
+            logger.info(f"[EXCLUDE-HOLDOUT] Skipping uncataloged holdout {pdf_path.name}")
+            holdout_excluded_count += 1
+            continue
+
+        fallback_meta = {
+            "title": pdf_path.stem.replace("_", " "),
+            "authors": "Unknown",
+            "source_url": "",
+        }
+        doc_id = process_and_index(str(pdf_path), fallback_meta, db)
+        if doc_id:
+            indexed_count += 1
+            if indexed_count % 10 == 0:
+                db.commit()
+        else:
+            skipped_count += 1
 
     db.commit()
     db.close()
