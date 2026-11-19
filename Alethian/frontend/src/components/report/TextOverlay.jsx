@@ -5,7 +5,7 @@ import { useReportStore } from '../../stores/reportStore';
  * Applies highlight spans to a plain text string given an array of char-range matches.
  * Returns an array of React elements (text nodes + highlighted spans).
  */
-function buildHighlightedSegments(text, matches, charOffset) {
+function buildHighlightedSegments(text, matches, charOffset, onSelectMatch) {
     if (!matches || matches.length === 0) {
         return [<span key="all">{text}</span>];
     }
@@ -13,17 +13,23 @@ function buildHighlightedSegments(text, matches, charOffset) {
     // Translate global char coords to local (page-relative) coords
     const localMatches = matches
         .filter(m => {
-            const s = (m.submitted_start_char || 0) - charOffset;
-            const e = (m.submitted_end_char || 0) - charOffset;
+            const startChar = m.submitted_start_char ?? 0;
+            const endChar = m.submitted_end_char ?? (startChar + (m.submitted_text?.length || 0));
+            const s = startChar - charOffset;
+            const e = endChar - charOffset;
             return e > 0 && s < text.length;
         })
-        .map(m => ({
-            start: Math.max(0, (m.submitted_start_char || 0) - charOffset),
-            end: Math.min(text.length, (m.submitted_end_char || 0) - charOffset),
-            type: m.type,
-            id: m.id,
-            sim: m.similarity || m.similarity_score || 0,
-        }))
+        .map(m => {
+            const startChar = m.submitted_start_char ?? 0;
+            const endChar = m.submitted_end_char ?? (startChar + (m.submitted_text?.length || 0));
+            return {
+                start: Math.max(0, startChar - charOffset),
+                end: Math.min(text.length, endChar - charOffset),
+                type: m.type,
+                id: m.id,
+                sim: m.similarity || m.similarity_score || 0,
+            };
+        })
         .sort((a, b) => a.start - b.start);
 
     if (localMatches.length === 0) {
@@ -58,7 +64,8 @@ function buildHighlightedSegments(text, matches, charOffset) {
                 key={`hl-${match.id}-${match.start}`}
                 style={getHighlightStyle(match.type)}
                 title={`${match.type.replace(/_/g, ' ')} — ${Math.round(match.sim)}% similarity`}
-                className="cursor-pointer rounded-[2px] px-[1px] transition-opacity hover:opacity-80"
+                className={`cursor-pointer rounded-[2px] px-[1px] transition-opacity hover:opacity-80 ${match.type === 'internal_exact' ? 'bg-error-container/30' : ''}`}
+                onClick={() => onSelectMatch?.(match.id)}
             >
                 {text.slice(match.start, match.end)}
             </mark>
@@ -73,8 +80,9 @@ function buildHighlightedSegments(text, matches, charOffset) {
     return segments;
 }
 
-export default function TextOverlay({ pageTexts, documentText, matches }) {
-    const { currentPage, setCurrentPage } = useReportStore();
+export default function TextOverlay({ pageTexts, documentText, text, matches }) {
+    const rawDocText = documentText || text;
+    const { currentPage, setCurrentPage, setSelectedMatch } = useReportStore();
     const pageRefs = useRef({});
     const containerRef = useRef(null);
 
@@ -119,26 +127,26 @@ export default function TextOverlay({ pageTexts, documentText, matches }) {
         });
 
         return () => observer.disconnect();
-    }, [pageTexts, documentText, setCurrentPage]);
+    }, [pageTexts, rawDocText, setCurrentPage]);
 
     // Build pages array: prefer page_texts from backend; fall back to
     // splitting the monolithic document_text by estimated page size.
     let pages = [];
     if (pageTexts && pageTexts.length > 0) {
         pages = pageTexts;
-    } else if (documentText) {
+    } else if (rawDocText) {
         // Fallback: roughly split at ~4000 chars per page
         const CHARS_PER_PAGE = 4000;
         let offset = 0;
         let pg = 1;
-        while (offset < documentText.length) {
-            const chunk = documentText.slice(offset, offset + CHARS_PER_PAGE);
+        while (offset < rawDocText.length) {
+            const chunk = rawDocText.slice(offset, offset + CHARS_PER_PAGE);
             pages.push({ page: pg, text: chunk, char_start: offset, char_end: offset + chunk.length });
             offset += CHARS_PER_PAGE;
             pg++;
         }
-        if (pages.length === 0 && documentText) {
-            pages = [{ page: 1, text: documentText, char_start: 0, char_end: documentText.length }];
+        if (pages.length === 0 && rawDocText) {
+            pages = [{ page: 1, text: rawDocText, char_start: 0, char_end: rawDocText.length }];
         }
     }
 
@@ -203,7 +211,7 @@ export default function TextOverlay({ pageTexts, documentText, matches }) {
 
                         {/* Page body text with highlighted match ranges */}
                         <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                            {buildHighlightedSegments(pg.text, activeMatches, pg.char_start)}
+                            {buildHighlightedSegments(pg.text, activeMatches, pg.char_start, setSelectedMatch)}
                         </p>
 
                         {/* Page footer */}

@@ -1,6 +1,15 @@
 import re
 from app.core.embeddings import generate_embeddings_batch
 
+# Minimum number of real (alphabetic) words a chunk must contain to be indexed/matched.
+# This prevents punctuation runs like ". . . . ." from polluting the vector store
+# and generating spurious archival exact matches.
+MIN_REAL_WORDS = 15
+
+def _count_real_words(text: str) -> int:
+    """Return the number of tokens that contain at least one letter."""
+    return sum(1 for tok in text.split() if re.search(r'[A-Za-z]', tok))
+
 def create_sliding_windows(text, window_size=None):
     """Reuses sliding-window approach from backup/text_processor.py"""
     if not text:
@@ -40,6 +49,11 @@ def process_text_into_chunks(text, page_boundaries=None, page_count=1):
     window_metadata = []
     search_offset = 0
     for w in windows:
+        # Drop noise chunks that are mostly punctuation / whitespace
+        # (e.g. ". . . . ." repeated leaders, "— — —" separators, etc.)
+        if _count_real_words(w) < MIN_REAL_WORDS:
+            continue
+
         page = 1
         char_start = text.find(w, search_offset)
         if char_start == -1:

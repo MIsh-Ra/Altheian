@@ -134,14 +134,16 @@ export default function ReportView() {
 
                 <div className="flex flex-1 overflow-hidden p-6 space-x-6">
                     {/* Left Panel */}
-                    <aside className="w-1/4 bg-surface-container-lowest flex flex-col overflow-y-auto">
-                        <div className="p-5 border-b border-ghost">
+                    <aside className="w-1/4 bg-surface-container-lowest flex flex-col overflow-hidden">
+                        {/* Heatmap + filters — fixed height, does not grow to push matches away */}
+                        <div className="flex-none p-5 border-b border-ghost">
                             <Heatmap pages={report.heatmap} />
                         </div>
-                        <div className="p-5 border-b border-ghost bg-surface-container-low">
+                        <div className="flex-none p-5 border-b border-ghost bg-surface-container-low">
                             <FilterBar />
                         </div>
-                        <div className="flex-1 p-5 overflow-y-auto">
+                        {/* Matches — gets all remaining height, scrolls independently */}
+                        <div className="flex-1 min-h-0 p-5 overflow-y-auto">
                             <h3 className="text-xs font-bold uppercase tracking-widest text-on-surface mb-4">Identified Anomalies</h3>
                             <div className="space-y-4">
                                 {filteredMatches.map(m => <MatchCard key={m.id} match={m} onUpdate={refetch} />)}

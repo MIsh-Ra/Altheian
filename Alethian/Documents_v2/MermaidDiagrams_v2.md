@@ -103,9 +103,9 @@ graph TD
 
     %% Data Flows
     User -->|PDF File| P1
-    P1 -->|Structured JSON + Shingles| P2
+    P1 -->|Structured JSON + Chunks| P2
     
-    P2 <-->|MinHash/Vectors| Archive
+    P2 <-->|Vectors| Archive
     P2 -->|Internal Matches| P4
     P2 -->|Unmatched Chunks| P3
     
@@ -125,10 +125,9 @@ graph TD
     ConfCheck{Confidence > 0.8?}
     Vision[Llama-3-Vision OCR]
     Norm[Document Normalizer]
-    Shingler[Shingle Generator]
+    Chunker[Chunk Generator]
     JSON[Normalized JSON]
     DB[("PostgreSQL")]
-    RedisStore[("Redis LSH")]
     QdrantStore[("Qdrant Vectors")]
 
     Input --> Grobid
@@ -137,10 +136,9 @@ graph TD
     ConfCheck -- No --> Vision
     Vision -->|Raw Text| Norm
     Norm --> JSON
-    JSON --> Shingler
-    Shingler --> DB
-    Shingler --> RedisStore
-    Shingler --> QdrantStore
+    JSON --> Chunker
+    Chunker --> DB
+    Chunker --> QdrantStore
 ```
 
 ### 2.4 Level 2 DFD: Layer 2 (Internal Similarity)
@@ -148,36 +146,22 @@ graph TD
 ```mermaid
 graph TD
     Text[Body Text Input]
-    MinHash[MinHash Generator]
-    Redis[Redis LSH Index]
-    LSHMatch{Jaccard > 0.5?}
-    
-    Aligner[Paragraph Aligner]
     VecEmbed[Sentence Embedder]
     VecDB[Qdrant Vector DB]
     SemMatch{Cosine Sim > 0.85?}
     
-    FlagExact["Flag: Exact Copy\n(page, text, score)"]
-    FlagPara["Flag: Paraphrase\n(page, text, score)"]
+    FlagMatch["Flag: Match Detected\n(page, text, score)"]
     Safe[Original Content]
     DB[("Save to Matches Table")]
 
-    Text --> MinHash
-    MinHash --> Redis
-    Redis --> LSHMatch
-    
-    LSHMatch -- Yes --> Aligner
-    Aligner --> FlagExact
-    
-    LSHMatch -- No --> VecEmbed
+    Text --> VecEmbed
     VecEmbed --> VecDB
     VecDB --> SemMatch
     
-    SemMatch -- Yes --> FlagPara
+    SemMatch -- Yes --> FlagMatch
     SemMatch -- No --> Safe
     
-    FlagExact --> DB
-    FlagPara --> DB
+    FlagMatch --> DB
 ```
 
 ### 2.5 Level 2 DFD: Layer 3 (Web Dragnet)
@@ -404,14 +388,12 @@ sequenceDiagram
     API-->>U: WebSocket: "Parsing document..."
     
     Q->>Ing: Process PDF (Grobid)
-    Ing-->>Q: Return JSON + Shingles
+    Ing-->>Q: Return JSON + Chunks
     Q->>DB: Store document text
-    Q->>Redis: Store MinHash signatures
     Q->>Qdrant: Store sentence embeddings
     API-->>U: WebSocket: "Checking internal archive..."
     
     Q->>Sim: Run Internal Similarity
-    Sim->>Redis: Query LSH Index
     Sim->>Qdrant: Query Vector DB
     Sim-->>DB: Save internal matches
     API-->>U: WebSocket: "Searching the web..."
@@ -487,8 +469,8 @@ sequenceDiagram
     end
     
     Norm-->>Q: Structured JSON
-    Q->>Shingler: Generate shingles + embeddings
-    Shingler-->>Q: MinHash signatures + vectors
+    Q->>Chunker: Generate chunks + embeddings
+    Chunker-->>Q: Vector embeddings
 ```
 
 ---
@@ -500,16 +482,13 @@ classDiagram
     class DocumentProcessor {
         +process(pdf_file)
         +normalize_output(raw_data)
-        +generate_shingles(text)
+        +chunk_text(text)
         -route_to_ocr(low_confidence_doc)
     }
 
     class SimilarityEngine {
-        +generate_minhash(text)
-        +query_lsh_index(signature)
         +generate_embeddings(text)
         +search_vectors(vector)
-        +paragraph_align(text_a, text_b)
         +batch_compare(doc_list)
     }
 
@@ -569,7 +548,6 @@ classDiagram
     ReportGenerator -- Report : compiles
     PDFExporter -- Report : exports
     
-    SimilarityEngine --|> RedisLSHClient
     SimilarityEngine --|> QdrantClient
     WebDragnet --|> SerperClient
     WebDragnet --|> ContentFetcher
@@ -624,4 +602,53 @@ graph TD
     CeleryWorker -- HTTP --> GrobidService
     
     CeleryWorker -- HTTPS --> APIs
+```
+
+---
+
+## 8. ML Pipeline Diagram
+
+```mermaid
+graph TD
+    Input[PDF / Document Input]
+
+    subgraph Phase1 [Text Extraction & Normalization]
+        Extract[Grobid / Llama-3-Vision OCR]
+        Chunk[Paragraph & Sentence Chunking]
+        Input --> Extract
+        Extract --> Chunk
+    end
+
+    subgraph Phase2 [Embedding & Feature Generation]
+        SentTrans[Sentence-Transformers Encoder]
+        Chunk --> SentTrans
+    end
+
+    subgraph Phase3 [Indexing & Retrieval]
+        Qdrant[(Qdrant Vector DB)]
+        SentTrans -->|Store/Query| Qdrant
+    end
+
+    subgraph Phase4 [Similarity & Classification]
+        Cosine[Cosine Similarity Scoring]
+        Qdrant -->|Semantic Matches| Cosine
+        
+        Classifier{Score > Threshold?}
+        Cosine --> Classifier
+    end
+
+    subgraph Phase5 [Web Dragnet Fallback]
+        Unmatched[Unmatched Suspicious Chunks]
+        Serper[Serper.dev Web Search]
+        Coherence[Source Coherence Analysis]
+        Unmatched --> Serper
+        Serper --> Coherence
+    end
+
+    Classifier -- Yes --> FlagInt[Flag: Internal Match]
+    Classifier -- No --> Unmatched
+    Coherence --> FlagExt[Flag: External Match]
+    
+    classDef model fill:#f9f,stroke:#333,stroke-width:2px;
+    class Extract,SentTrans,Coherence model;
 ```

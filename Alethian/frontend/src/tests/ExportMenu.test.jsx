@@ -36,34 +36,34 @@ vi.mock('jspdf', () => ({
 }));
 
 describe('ExportMenu Component', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        global.URL.createObjectURL = vi.fn().mockReturnValue('blob:http://localhost/mock-url');
+        global.URL.revokeObjectURL = vi.fn();
+    });
+
     it('renders export buttons', () => {
         render(<ExportMenu />);
         expect(screen.getByText('EXPORT PDF')).toBeInTheDocument();
+        expect(screen.getByText('JSON')).toBeInTheDocument();
+        expect(screen.getByText('PRINT')).toBeInTheDocument();
     });
 
     it('triggers pdf export on click', async () => {
-        // Mock the DOM element
-        const mockElement = document.createElement('div');
-        mockElement.id = 'alethian-report-container';
-        document.body.appendChild(mockElement);
+        const mockBlob = new Blob(['pdf-data'], { type: 'application/pdf' });
+        Client.reports.exportPdf.mockResolvedValueOnce(mockBlob);
 
         render(<ExportMenu />);
         fireEvent.click(screen.getByText('EXPORT PDF'));
 
         await waitFor(() => {
-            expect(mockHtml2Canvas).toHaveBeenCalledWith(mockElement, expect.any(Object));
-            expect(mockJsPdfSave).toHaveBeenCalled();
+            expect(Client.reports.exportPdf).toHaveBeenCalled();
+            expect(global.URL.createObjectURL).toHaveBeenCalledWith(mockBlob);
         });
-        
-        document.body.removeChild(mockElement);
     });
     
     it('handles pdf export failure gracefully', async () => {
-        const mockElement = document.createElement('div');
-        mockElement.id = 'alethian-report-container';
-        document.body.appendChild(mockElement);
-        
-        mockHtml2Canvas.mockRejectedValueOnce(new Error("Render error"));
+        Client.reports.exportPdf.mockRejectedValueOnce(new Error("Network error"));
         const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
         const consoleMock = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -76,6 +76,5 @@ describe('ExportMenu Component', () => {
         
         alertMock.mockRestore();
         consoleMock.mockRestore();
-        document.body.removeChild(mockElement);
     });
 });

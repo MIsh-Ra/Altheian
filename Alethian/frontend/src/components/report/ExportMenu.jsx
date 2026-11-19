@@ -16,7 +16,7 @@ export default function ExportMenu() {
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `alethian_report_${id.substring(0, 8)}.pdf`;
+            link.download = `alethian_report_${id ? id.substring(0, 8) : 'report'}.pdf`;
             document.body.appendChild(link);
             link.click();
             link.remove();
@@ -38,7 +38,7 @@ export default function ExportMenu() {
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `alethian_report_${id.substring(0, 8)}.json`;
+            link.download = `alethian_report_${id ? id.substring(0, 8) : 'report'}.json`;
             document.body.appendChild(link);
             link.click();
             link.remove();

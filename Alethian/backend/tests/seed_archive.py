@@ -36,8 +36,8 @@ def get_engine():
     return create_engine(db_url)
 
 
-def select_pdfs(archive_path, max_files=10, max_size_mb=1.5):
-    """Pick small PDFs from the archive for speed."""
+def select_pdfs(archive_path, max_files=None, max_size_mb=None):
+    """Pick PDFs from the archive. By default, selects ALL available PDFs."""
     metadata_path = os.path.join(archive_path, "metadata.json")
     if not os.path.exists(metadata_path):
         print(f"ERROR: metadata.json not found at {metadata_path}")
@@ -50,7 +50,7 @@ def select_pdfs(archive_path, max_files=10, max_size_mb=1.5):
     seen_filenames = set()
 
     for entry in metadata:
-        if len(selected) >= max_files:
+        if max_files is not None and len(selected) >= max_files:
             break
 
         # Extract filename from the files list
@@ -71,7 +71,7 @@ def select_pdfs(archive_path, max_files=10, max_size_mb=1.5):
             continue
 
         size_mb = os.path.getsize(local_path) / (1024 * 1024)
-        if size_mb > max_size_mb:
+        if max_size_mb is not None and size_mb > max_size_mb:
             continue
 
         seen_filenames.add(filename)
@@ -88,7 +88,7 @@ def select_pdfs(archive_path, max_files=10, max_size_mb=1.5):
 
 
 
-def seed(archive_path, max_files=50):
+def seed(archive_path, max_files=None):
     engine = get_engine()
     
     # Create all tables first before connecting
@@ -126,6 +126,12 @@ def seed(archive_path, max_files=50):
     seeded_ids = []
 
     for pdf_info in pdfs:
+        # Check for duplicates (Idempotency)
+        existing = db.query(Document).filter(Document.filename == pdf_info["filename"]).first()
+        if existing:
+            print(f"[SKIP] {pdf_info['filename']} already in database (id={existing.id}).")
+            continue
+
         doc_id = str(uuid.uuid4())
         print(f"\n--- Processing: {pdf_info['filename']} ---")
 

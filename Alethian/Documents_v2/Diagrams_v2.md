@@ -67,11 +67,11 @@ This document contains the architectural and design diagrams for the Alethian v2
 
 ```text
 +------+    +-----------------------------+
-| User | -> | 1.0 Ingestion Engine        | (PDF -> JSON + Shingles)
+| User | -> | 1.0 Ingestion Engine        | (PDF -> JSON + Chunks)
 +------+    +--------------+--------------+
                            |
             +--------------v--------------+
-            | 2.0 Internal Similarity     | <---> [Local Archive (Redis/Qdrant)]
+            | 2.0 Internal Similarity     | <---> [Local Archive (Qdrant)]
             +--------------+--------------+
                            |
             +--------------v--------------+
@@ -100,10 +100,9 @@ This document contains the architectural and design diagrams for the Alethian v2
 [Document Normalizer] <-----------------------+
     |
     v
-[Normalized JSON + Shingles]
+[Normalized JSON + Chunks]
     |
     +--> [PostgreSQL] (persist document)
-    +--> [Redis] (store MinHash signatures)
     +--> [Qdrant] (store sentence embeddings)
 ```
 
@@ -113,24 +112,19 @@ This document contains the architectural and design diagrams for the Alethian v2
 [Body Text]
     |
     v
-[MinHash Generator] -> [Redis LSH Index] -> < LSH Match (Jaccard > 0.5)? >
-                                                  /      \
-                                                YES      NO
-                                                 |        |
-                                                 v        v
-                                     [Paragraph Aligner]  [Sentence Embedder]
-                                         |                     |
-                                         v                     v
-                                   [Exact Matches]        [Qdrant Vector DB]
-                                   (page, text, score)         |
-                                                               v
-                                                    < Cosine Sim > 0.85? >
-                                                      /              \
-                                                    YES              NO
-                                                     |                |
-                                                     v                v
-                                              [Paraphrase Match] [Mark as Original]
-                                              (page, text, score)
+[Sentence Embedder]
+    |
+    v
+[Qdrant Vector DB]
+    |
+    v
+< Cosine Sim > 0.85? >
+   /              \
+ YES              NO
+  |                |
+  v                v
+[Match Detected]  [Mark as Original]
+(page, text, score)
 
            All matches --> [PostgreSQL: Report Matches Table]
 ```
@@ -289,7 +283,6 @@ User         API          Queue        Ingestion    Similarity   Web Dragnet  DB
  |            |            |<--JSON--------|            |            |         |
  |            |            |               |            |            |         |
  |            |            |--CheckSim---->|            |            |         |
- |            |            |               |--MinHash-->|            |         |
  |            |            |               |--Vectors-->|            |         |
  |            |            |               |            |            |--Save-->|
  |            |            |               |            |            |         |
@@ -338,17 +331,15 @@ Faculty       Dashboard      API           DB            PDF Generator
 +-----------------------+           +-----------------------+
 | +process(pdf)         |---------->| +UUID id              |
 | +normalize(raw)       | creates   | +String title         |
-| +generate_shingles()  |           | +List~Page~ pages     |
+| +chunk_text()         |           | +List~Page~ pages     |
 | -route_to_ocr()       |           | +JSON metadata        |
 +-----------------------+           +-----------------------+
 
 +-----------------------+           +------------------+
 |   SimilarityEngine    |---------->|   LocalArchive   |
 +-----------------------+  queries  +------------------+
-| +minhash(text)        |           | +Redis LSH Index |
 | +vector_search(text)  |           | +Qdrant Vectors  |
-| +paragraph_align()    |           +------------------+
-| +batch_compare()      |
+| +batch_compare()      |           +------------------+
 +-----------------------+
 
 +-----------------------+           +------------------+
@@ -407,4 +398,52 @@ Faculty       Dashboard      API           DB            PDF Generator
                             | External API               |
                             | [Serper.dev]               |
                             +----------------------------+
+```
+
+---
+
+## 8. ML Pipeline Diagram
+
+```text
+[PDF Input]
+    |
+    v
+[1. Text Extraction (Grobid/OCR)]
+    |
+    +-> [Extracted Text + Metadata]
+            |
+            v
+[2. Data Normalization & Chunking]
+    |
+    +-> [Paragraph Chunks]
+    |
+    +-> [Sentence Chunks]
+            |
+            v
+[3. Feature Generation / Embedding]
+    |
+    +-> [Sentence-Transformers (Dense)] ---> [Qdrant Vector DB]
+            |                                    |
+            v                                    v
+[4. Similarity Scoring & Retrieval] <------------+
+    |
+    +-> [Cosine Similarity (Semantic)]
+            |
+            v
+[5. Classification & Thresholding]
+    |
+    +-> < Score > Threshold ? >
+            |
+            +-- YES --> [Internal Plagiarism Match]
+            |
+            +-- NO ---> [6. Web Dragnet (Suspicious Chunks)]
+                             |
+                             v
+                        [Serper.dev Web Search]
+                             |
+                             v
+                        [Source Coherence Analysis]
+                             |
+                            v
+                       [External Match Result]
 ```

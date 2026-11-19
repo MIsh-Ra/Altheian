@@ -235,11 +235,11 @@ def ingest_archive(base_url, outdir, limit=1000):
 def main():
     parser = argparse.ArgumentParser(description="Ingest DGX DSpace Archive")
     parser.add_argument("--url", default="http://172.22.2.20:8080/xmlui/", help="Base URL for DSpace")
-    parser.add_argument("--limit", type=int, default=50, help="Number of items to ingest limit")
+    parser.add_argument("--limit", type=int, default=None, help="Max items to ingest (default: all)")
     parser.add_argument("--outdir", default="./archive_pdfs", help="Directory to save PDFs")
     args = parser.parse_args()
 
-    ingest_archive(args.url, args.outdir, limit=args.limit)
+    ingest_archive(args.url, args.outdir, limit=args.limit if args.limit is not None else float('inf'))
 
 if __name__ == "__main__":
     main()

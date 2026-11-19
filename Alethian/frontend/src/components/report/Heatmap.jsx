@@ -29,7 +29,6 @@ export default function Heatmap({ pages }) {
 
     const handlePageClick = (pageNum) => {
         setCurrentPage(pageNum);
-        // Scroll document viewer to the selected page
         setTimeout(() => {
             const el = document.getElementById(`page-${pageNum}`);
             if (el) {
@@ -39,73 +38,130 @@ export default function Heatmap({ pages }) {
     };
 
     return (
-        <div className="flex flex-col space-y-1">
-            {pages.map((page) => {
-                const pageNum = page.page_number;
-                const density = page.match_density ?? page.density_score ?? 0;
-                const color = getColor(page);
-                const isActive = currentPage === pageNum;
-                const barWidth = Math.max(4, Math.round(density * 100));
-                const matchCount = page.match_count || 0;
-                const hasMatch = matchCount > 0;
+        <div>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-on-surface mb-3">
+                Page Heatmap
+            </h3>
+            {/* Scrollable container — never taller than ~220px so matches list stays visible */}
+            <div
+                style={{ maxHeight: '220px', overflowY: 'auto', overflowX: 'hidden' }}
+                className="pr-1"
+            >
+                {/* Mini-page grid */}
+                <div
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(36px, 1fr))',
+                        gap: '6px',
+                    }}
+                >
+                    {pages.map((page) => {
+                        const pageNum = page.page_number;
+                        const density = page.match_density ?? page.density_score ?? 0;
+                        const color = getColor(page);
+                        const isActive = currentPage === pageNum;
+                        const matchCount = page.match_count || 0;
+                        const hasMatch = matchCount > 0;
+                        const fillHeight = Math.round(density * 100); // % of page height to colour
 
-                return (
-                    <button
-                        key={pageNum}
-                        onClick={() => handlePageClick(pageNum)}
-                        title={`Page ${pageNum} — density ${Math.round(density * 100)}%${hasMatch ? ` (${matchCount} match${matchCount > 1 ? 'es' : ''})` : ''}`}
-                        className={`flex items-center w-full text-left transition-all group focus:outline-none focus-visible:ring-1 focus-visible:ring-primary ${
-                            isActive ? 'bg-surface-container-highest' : 'hover:bg-surface-container-high'
-                        }`}
-                        style={{ padding: '3px 6px', borderRadius: 0 }}
-                    >
-                        {/* Page number */}
-                        <span
-                            className="font-mono text-[9px] text-on-surface-variant shrink-0 w-6 text-right mr-2"
-                            style={{ color: isActive ? color : undefined }}
-                        >
-                            {pageNum}
-                        </span>
-
-                        {/* Density bar */}
-                        <div className="flex-1 h-4 bg-surface-container-highest relative overflow-hidden">
-                            <div
-                                className="absolute inset-y-0 left-0 transition-all duration-300"
+                        return (
+                            <button
+                                key={pageNum}
+                                onClick={() => handlePageClick(pageNum)}
+                                title={`Page ${pageNum} — density ${Math.round(density * 100)}%${hasMatch ? ` (${matchCount} match${matchCount > 1 ? 'es' : ''})` : ''}`}
                                 style={{
-                                    width: `${barWidth}%`,
-                                    backgroundColor: color,
-                                    opacity: hasMatch ? 0.85 : 0.15,
+                                    position: 'relative',
+                                    width: '36px',
+                                    height: '48px',
+                                    border: isActive
+                                        ? `2px solid ${color}`
+                                        : '1.5px solid var(--color-ghost, #333)',
+                                    borderRadius: '2px',
+                                    backgroundColor: 'var(--color-surface-container-highest, #1e1e1e)',
+                                    overflow: 'hidden',
+                                    cursor: 'pointer',
+                                    padding: 0,
+                                    boxShadow: isActive ? `0 0 0 2px ${color}33` : undefined,
+                                    transition: 'border-color 0.15s, box-shadow 0.15s',
+                                    flexShrink: 0,
                                 }}
-                            />
-                            {/* Breakdown sub-bars */}
-                            {page.internal_density > 0 && (
+                            >
+                                {/* Density fill — rises from the bottom like ink soaking in */}
                                 <div
-                                    className="absolute inset-y-0 left-0 opacity-40"
                                     style={{
-                                        width: `${Math.round(page.internal_density * 100)}%`,
-                                        backgroundColor: '#ef4444',
+                                        position: 'absolute',
+                                        bottom: 0,
+                                        left: 0,
+                                        right: 0,
+                                        height: `${Math.max(hasMatch ? 8 : 0, fillHeight)}%`,
+                                        backgroundColor: color,
+                                        opacity: hasMatch ? 0.75 : 0.15,
+                                        transition: 'height 0.3s ease',
                                     }}
                                 />
-                            )}
-                        </div>
 
-                        {/* Match count pill */}
-                        {hasMatch && (
-                            <span
-                                className="ml-2 font-mono text-[9px] font-bold px-1 rounded-sm shrink-0"
-                                style={{ backgroundColor: color, color: '#fff', minWidth: '18px', textAlign: 'center' }}
-                            >
-                                {matchCount}
-                            </span>
-                        )}
+                                {/* Internal density sub-layer (darker red tint on top of base fill) */}
+                                {page.internal_density > 0 && (
+                                    <div
+                                        style={{
+                                            position: 'absolute',
+                                            bottom: 0,
+                                            left: 0,
+                                            right: 0,
+                                            height: `${Math.round(page.internal_density * 100)}%`,
+                                            backgroundColor: '#ef4444',
+                                            opacity: 0.35,
+                                        }}
+                                    />
+                                )}
 
-                        {/* Active page indicator */}
-                        {isActive && (
-                            <span className="ml-1 w-1 h-1 rounded-full bg-primary shrink-0" />
-                        )}
-                    </button>
-                );
-            })}
+                                {/* Page number label */}
+                                <span
+                                    style={{
+                                        position: 'absolute',
+                                        top: '2px',
+                                        left: 0,
+                                        right: 0,
+                                        textAlign: 'center',
+                                        fontSize: '8px',
+                                        fontFamily: 'monospace',
+                                        fontWeight: 700,
+                                        color: isActive ? color : 'var(--color-on-surface-variant, #aaa)',
+                                        lineHeight: 1,
+                                        zIndex: 1,
+                                        userSelect: 'none',
+                                    }}
+                                >
+                                    {pageNum}
+                                </span>
+
+                                {/* Match count badge (bottom-right corner) */}
+                                {hasMatch && (
+                                    <span
+                                        style={{
+                                            position: 'absolute',
+                                            bottom: '2px',
+                                            right: '2px',
+                                            fontSize: '7px',
+                                            fontFamily: 'monospace',
+                                            fontWeight: 700,
+                                            backgroundColor: color,
+                                            color: '#fff',
+                                            borderRadius: '2px',
+                                            padding: '0 2px',
+                                            lineHeight: '10px',
+                                            zIndex: 2,
+                                            userSelect: 'none',
+                                        }}
+                                    >
+                                        {matchCount}
+                                    </span>
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
         </div>
     );
 }
