@@ -2,8 +2,9 @@
 import json, re, shutil
 from pathlib import Path
 
-METADATA_FILE = Path("/home/23uec552/crawler_stuff/Downloads/metadata.json")
-BASE_DIR = Path("/home/23uec552/crawler_stuff/Downloads")
+import os
+BASE_DIR = Path(os.environ.get("DOWNLOAD_DIR", Path.home() / "crawler_stuff" / "Downloads"))
+METADATA_FILE = BASE_DIR / "metadata.json"
 
 # output dirs
 BTP_DIR = BASE_DIR / "classified/btp_reports"

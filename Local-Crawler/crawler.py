@@ -2,13 +2,11 @@
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-import time, json, re
+import time, json, re, os, argparse
 from pathlib import Path
 
 BASE_URL = "http://172.22.2.20:8080/jspui/"
-SAVE_DIR = Path("/home/23uec552/crawler_stuff/Downloads")
-METADATA_FILE = SAVE_DIR / "metadata.json"
-VISITED_FILE = SAVE_DIR / "visited.txt"
+DEFAULT_SAVE_DIR = Path(os.environ.get("DOWNLOAD_DIR", Path.home() / "crawler_stuff" / "Downloads"))
 
 HEADERS = {"User-Agent": "BTP-Crawler/1.0"}
 DELAY = 1.0
@@ -22,17 +20,20 @@ def get_soup(session, url):
         print(f"[FAIL] {url}: {e}")
         return None
 
-def crawl():
-    SAVE_DIR.mkdir(parents=True, exist_ok=True)
+def crawl(save_dir=None):
+    save_path = Path(save_dir) if save_dir else DEFAULT_SAVE_DIR
+    save_path.mkdir(parents=True, exist_ok=True)
+    metadata_file = save_path / "metadata.json"
+    visited_file = save_path / "visited.txt"
 
     visited = set()
-    if VISITED_FILE.exists():
-        visited = set(VISITED_FILE.read_text().splitlines())
+    if visited_file.exists():
+        visited = set(visited_file.read_text().splitlines())
 
     metadata = []
-    if METADATA_FILE.exists():
+    if metadata_file.exists():
         try:
-            metadata = json.loads(METADATA_FILE.read_text())
+            metadata = json.loads(metadata_file.read_text())
         except Exception as e:
             print(f"[WARN] Failed to load metadata.json: {e}; starting fresh")
             metadata = []
@@ -102,21 +103,21 @@ def crawl():
 
             filename = file_url.split("/")[-1].split("?")[0]
             filename = re.sub(r"[^\w\.\-]", "_", filename)
-            save_path = SAVE_DIR / filename
+            dest_file = save_path / filename
 
-            if save_path.exists() or str(save_path) in already_downloaded:
+            if dest_file.exists() or str(dest_file) in already_downloaded:
                 print(f"[SKIP] {filename}")
-                meta["files"].append(str(save_path))
+                meta["files"].append(str(dest_file))
                 continue
 
             try:
                 r = session.get(file_url, headers=HEADERS, timeout=60, stream=True)
                 r.raise_for_status()
-                with open(save_path, "wb") as f:
+                with open(dest_file, "wb") as f:
                     for chunk in r.iter_content(8192):
                         f.write(chunk)
                 print(f"[OK]   {filename}")
-                meta["files"].append(str(save_path))
+                meta["files"].append(str(dest_file))
             except Exception as e:
                 print(f"[FAIL] {file_url}: {e}")
 
@@ -125,15 +126,18 @@ def crawl():
         if meta["files"]:
             metadata.append(meta)
             already_downloaded.update(meta["files"])
-            METADATA_FILE.write_text(json.dumps(metadata, indent=2))
+            metadata_file.write_text(json.dumps(metadata, indent=2))
 
-        with open(VISITED_FILE, "a") as vf:
+        with open(visited_file, "a") as vf:
             vf.write(url + "\n")
 
         time.sleep(DELAY)
 
-    print(f"\n[DONE] PDFs saved to {SAVE_DIR}")
-    print(f"[DONE] Metadata at {METADATA_FILE}")
+    print(f"\n[DONE] PDFs saved to {save_path}")
+    print(f"[DONE] Metadata at {metadata_file}")
 
 if __name__ == "__main__":
-    crawl()
+    parser = argparse.ArgumentParser(description="Download PDFs and metadata from DSpace")
+    parser.add_argument("--outdir", default=str(DEFAULT_SAVE_DIR), help="Path to save PDFs and metadata")
+    args = parser.parse_args()
+    crawl(args.outdir)

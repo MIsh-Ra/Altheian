@@ -6,7 +6,8 @@ import json, time
 from pathlib import Path
 
 BASE_URL = "http://172.22.2.20:8080/jspui/"
-SAVE_DIR = Path("/home/23uec552/crawler_stuff/Downloads")
+import os
+SAVE_DIR = Path(os.environ.get("DOWNLOAD_DIR", Path.home() / "crawler_stuff" / "Downloads"))
 METADATA_FILE = SAVE_DIR / "metadata.json"
 
 HEADERS = {"User-Agent": "BTP-Crawler/1.0"}
