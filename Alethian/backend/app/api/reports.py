@@ -375,7 +375,7 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
     story = []
 
     # ── PAGE 1: COVER ────────────────────────────────────────────────────────
-    story.append(Spacer(1, 8 * mm))
+    story.append(Spacer(1, 4 * mm))
 
     # Header bar (simulated with a coloured table cell)
     cover_header = Table(
@@ -384,20 +384,24 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
             alignment=TA_CENTER
         ))]],
         colWidths=[PAGE_W - 2 * MARGIN],
-        rowHeights=[18 * mm],
+        rowHeights=[16 * mm],
     )
     cover_header.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), DARK),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING", (0, 0), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
     ]))
     story.append(cover_header)
-    story.append(Spacer(1, 8 * mm))
+    story.append(Spacer(1, 4 * mm))
 
     # Document metadata table
+    doc_title = report_data.get("document_title")
+    if not doc_title or doc_title.lower() == "unknown":
+        doc_title = report_data.get("filename") or "Unknown"
+
     meta_data = [
-        ["Document Title:", report_data.get("document_title") or "Unknown"],
+        ["Document Title:", doc_title],
         ["Author:", report_data.get("document_author") or "Unknown"],
         ["Analysis Date:", now.strftime("%B %d, %Y at %H:%M UTC")],
         ["Total Pages:", str(report_data.get("page_count") or "—")],
@@ -410,17 +414,17 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
         ("TEXTCOLOR", (0, 0), (-1, -1), DARK),
         ("ROWBACKGROUNDS", (0, 0), (-1, -1), [LIGHT, WHITE]),
         ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
         ("LEFTPADDING", (0, 0), (-1, -1), 8),
     ]))
     story.append(meta_table)
-    story.append(Spacer(1, 10 * mm))
+    story.append(Spacer(1, 5 * mm))
 
     # Large score display
     score_block_data = [[
         Paragraph(f"{round(originality)}%",
-                  ParagraphStyle("Score", fontSize=52, fontName="Helvetica-Bold",
+                  ParagraphStyle("Score", fontSize=48, fontName="Helvetica-Bold",
                                  textColor=risk_color, alignment=TA_CENTER)),
         Paragraph(f"<b>{risk} RISK</b><br/>Originality Score",
                   ParagraphStyle("RiskLabel", fontSize=12, fontName="Helvetica-Bold",
@@ -430,12 +434,12 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
     score_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("BOX", (0, 0), (-1, -1), 1.5, risk_color),
-        ("TOPPADDING", (0, 0), (-1, -1), 8),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
         ("LEFTPADDING", (0, 0), (-1, -1), 10),
     ]))
     story.append(score_table)
-    story.append(Spacer(1, 8 * mm))
+    story.append(Spacer(1, 4 * mm))
 
     # Internal vs Web contribution bar (text-based since no chart lib)
     int_pct = scores.get("internal_contribution", 0)
@@ -463,12 +467,12 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
         ("LEFTPADDING", (0, 0), (-1, -1), 8),
     ]))
     story.append(contrib_table)
-    story.append(Spacer(1, 8 * mm))
+    story.append(Spacer(1, 4 * mm))
 
     # Summary stats table
     story.append(Paragraph("Summary Statistics", h2))
     story.append(HRFlowable(width="100%", thickness=1, color=DARK))
-    story.append(Spacer(1, 3 * mm))
+    story.append(Spacer(1, 2 * mm))
     stats_data = [
         ["Total Matches", str(summary.get("total_matches", 0)),
          "Unique Sources", str(summary.get("unique_sources", 0))],
@@ -489,17 +493,17 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
         ("FONTSIZE", (0, 0), (-1, -1), 9),
         ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
         ("ROWBACKGROUNDS", (0, 0), (-1, -1), [LIGHT, WHITE]),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
         ("LEFTPADDING", (0, 0), (-1, -1), 8),
     ]))
     story.append(stats_table)
-    story.append(Spacer(1, 10 * mm))
+    story.append(Spacer(1, 4 * mm))
 
     # Reviewer sign-off block
     story.append(Paragraph("Faculty Review", h2))
     story.append(HRFlowable(width="100%", thickness=1, color=DARK))
-    story.append(Spacer(1, 3 * mm))
+    story.append(Spacer(1, 2 * mm))
     review = report_data.get("review", {})
     review_data = [
         ["Reviewed By:", review.get("reviewed_by") or "___________________________"],
@@ -512,8 +516,8 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
     review_table.setStyle(TableStyle([
         ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("TOPPADDING", (0, 0), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
         ("LINEBELOW", (0, -1), (-1, -1), 0.5, GREY),
     ]))
     story.append(review_table)
