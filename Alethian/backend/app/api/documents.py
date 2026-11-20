@@ -163,6 +163,23 @@ async def process_batch(
 ):
     return {"message": "Batch processing deferred", "files_received": len(files)}
 
+@router.get("/{document_id}/status")
+async def get_document_status(document_id: str, db: Session = Depends(get_db)):
+    doc = db.query(Document).filter(Document.id == document_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    report = doc.report[0] if doc.report else None
+    status_str = doc.status.value if hasattr(doc.status, "value") else str(doc.status)
+    return {
+        "document_id": document_id,
+        "status": status_str,
+        "stage": status_str,
+        "report_id": report.id if report else None,
+        "score": report.score if report else None,
+        "progress": 100 if status_str == "complete" else 50,
+        "message": f"Status: {status_str}"
+    }
+
 @router.websocket("/{document_id}/status")
 async def websocket_endpoint(websocket: WebSocket, document_id: str):
     """Real-time status updates via Redis pub/sub from celery_worker (M-04)."""
