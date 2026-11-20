@@ -58,12 +58,12 @@ export default function Login() {
 
                 <form className="space-y-6" onSubmit={handleLogin}>
                     <div className="space-y-2">
-                        <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Investigator ID</label>
+                        <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Investigator ID / Email / Username</label>
                         <input
-                            type="email"
+                            type="text"
                             required
                             className="w-full px-4 py-3 bg-surface-container-highest border border-ghost text-sm text-on-surface focus:outline-none focus:border-outline transition-colors placeholder:text-on-surface-variant/50"
-                            placeholder="faculty@institution.edu"
+                            placeholder="admin@alethian.edu or admin"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                         />

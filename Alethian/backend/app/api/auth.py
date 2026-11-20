@@ -36,9 +36,13 @@ def create_access_token(data: dict):
     encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
     return encoded_jwt
 
+from sqlalchemy import or_
+
 @router.post("/login", response_model=Token)
 def login(req: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == req.username).first()
+    user = db.query(User).filter(
+        or_(User.username == req.username, User.email == req.username)
+    ).first()
     
     # Auto-Registration mechanism just for convenience in this spec deployment where auth wasn't explicitly scaffolded for faculty onboarding
     if not user:
