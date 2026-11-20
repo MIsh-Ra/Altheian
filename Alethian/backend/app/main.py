@@ -48,10 +48,26 @@ app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 from pathlib import Path
 
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from fastapi import HTTPException
 
 _frontend_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 if _frontend_dist.exists():
-    app.mount("/", StaticFiles(directory=str(_frontend_dist), html=True), name="frontend")
+    _assets_dir = _frontend_dist / "assets"
+    if _assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not Found")
+        file_path = _frontend_dist / full_path
+        if full_path and file_path.is_file():
+            return FileResponse(file_path)
+        index_html = _frontend_dist / "index.html"
+        if index_html.exists():
+            return FileResponse(index_html)
+        raise HTTPException(status_code=404, detail="Not Found")
 else:
     @app.get("/")
     def read_root():
