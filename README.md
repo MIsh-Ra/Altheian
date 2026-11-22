@@ -185,6 +185,7 @@ Alethian/
 | Document | Path | Description |
 |:---------|:-----|:------------|
 | **This README** | `README.md` | Project overview and quick start |
+| **BTP Handover & System Report** | `docs/V3_BTP_HANDOVER_AND_TECHNICAL_REPORT.md` | Master technical briefing for BTP report & presentation |
 | **Documentation Hub** | `docs/README.md` | Complete index of all guides and specifications |
 | **Backend Guide** | `backend/README.md` | API reference, worker pipeline, configuration |
 | **Testing Guide** | `docs/TESTING.md` | Zero-mock test architecture, running tests |

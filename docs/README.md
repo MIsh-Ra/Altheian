@@ -6,6 +6,7 @@ This directory contains the central technical documentation, architectural speci
 
 ```
 docs/
+├── V3_BTP_HANDOVER_AND_TECHNICAL_REPORT.md # Master BTP Report & Preface Presentation Handover
 ├── API_REFERENCE.md                       # Comprehensive REST API reference & endpoint contracts
 ├── DEPLOYMENT.md                          # Cluster (DGX) & local container deployment manual
 ├── TESTING.md                             # Testing standards, benchmark definitions, and execution
