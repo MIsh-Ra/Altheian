@@ -6,208 +6,198 @@
 
 @layer base {
   :root {
-    --background: #f7f9fb;
-    --surface: #f7f9fb;
-    --surface-dim: #d8dadc;
+    --background: #f8f9fa;
+    --surface: #ffffff;
+    --surface-dim: #f1f3f5;
     --surface-bright: #ffffff;
     --surface-container-lowest: #ffffff;
-    --surface-container-low: #f2f4f6;
-    --surface-container: #eceef0;
-    --surface-container-high: #e6e8ea;
-    --surface-container-highest: #e0e3e5;
+    --surface-container-low: #f8f9fa;
+    --surface-container: #f1f3f5;
+    --surface-container-high: #e9ecef;
+    --surface-container-highest: #dee2e6;
     
-    --on-background: #191c1e;
-    --on-surface: #191c1e;
-    --on-surface-variant: #45474c;
-    --surface-variant: #e1e2e8;
+    --on-background: #111315;
+    --on-surface: #111315;
+    --on-surface-variant: #5f6368;
+    --surface-variant: #e8eaed;
 
-    --primary: #091426;
-    --primary-container: #1e293b;
-    --primary-fixed: #d8e3fb;
-    --primary-fixed-dim: #bcc7de;
+    --primary: #181a1f;
+    --primary-container: #22252c;
+    --primary-fixed: #e2e8f0;
+    --primary-fixed-dim: #cbd5e1;
     --on-primary: #ffffff;
-    --on-primary-container: #8590a6;
-    --on-primary-fixed: #111c2d;
-    --on-primary-fixed-variant: #3c475a;
+    --on-primary-container: #94a3b8;
+    --on-primary-fixed: #0f172a;
+    --on-primary-fixed-variant: #334155;
 
-    --secondary: #0058be;
-    --secondary-container: #2170e4;
-    --secondary-fixed: #d8e2ff;
-    --secondary-fixed-dim: #adc6ff;
+    --secondary: #2563eb;
+    --secondary-container: #1d4ed8;
+    --secondary-fixed: #dbeafe;
+    --secondary-fixed-dim: #bfdbfe;
     --on-secondary: #ffffff;
-    --on-secondary-container: #fefcff;
-    --on-secondary-fixed: #001a42;
-    --on-secondary-fixed-variant: #004395;
+    --on-secondary-container: #ffffff;
+    --on-secondary-fixed: #1e3a8a;
+    --on-secondary-fixed-variant: #1d4ed8;
 
-    --tertiary: #330002;
-    --tertiary-container: #5a0008;
-    --tertiary-fixed: #ffdad7;
-    --tertiary-fixed-dim: #ffb3ad;
+    --tertiary: #475569;
+    --tertiary-container: #334155;
+    --tertiary-fixed: #e2e8f0;
+    --tertiary-fixed-dim: #cbd5e1;
     --on-tertiary: #ffffff;
-    --on-tertiary-container: #ff5250;
-    --on-tertiary-fixed: #410004;
-    --on-tertiary-fixed-variant: #930013;
+    --on-tertiary-container: #f8fafc;
+    --on-tertiary-fixed: #0f172a;
+    --on-tertiary-fixed-variant: #1e293b;
 
-    --error: #ba1a1a;
-    --error-container: #ffdad6;
+    --error: #b91c1c;
+    --error-container: #fee2e2;
     --on-error: #ffffff;
-    --on-error-container: #93000a;
+    --on-error-container: #7f1d1d;
 
-    --outline: #75777d;
-    --outline-variant: #c5c6cd;
+    --outline: #9ca3af;
+    --outline-variant: #e5e7eb;
 
-    --inverse-surface: #2d3133;
-    --inverse-on-surface: #eff1f3;
-    --inverse-primary: #bcc7de;
+    --inverse-surface: #1f2937;
+    --inverse-on-surface: #f9fafb;
+    --inverse-primary: #94a3b8;
   }
  
   .dark {
-    /* True Dark Mapping (Forensic Monolith) */
-    --background: #0e0e0e;
-    --surface: #131313;
-    --surface-dim: #131313;
-    --surface-bright: #393939;
-    --surface-container-lowest: #0e0e0e;
-    --surface-container-low: #1b1b1b;
-    --surface-container: #1f1f1f;
-    --surface-container-high: #2a2a2a;
-    --surface-container-highest: #353535;
+    /* Graphite Neutral Ramp */
+    --background: #0d0e11;
+    --surface: #131519;
+    --surface-dim: #101215;
+    --surface-bright: #262931;
+    --surface-container-lowest: #0d0e11;
+    --surface-container-low: #17191e;
+    --surface-container: #1c1f26;
+    --surface-container-high: #242831;
+    --surface-container-highest: #2e333e;
 
-    --on-background: #e2e2e2;
-    --on-surface: #e2e2e2;
-    --on-surface-variant: #c6c6c6;
-    --surface-variant: #444746;
+    --on-background: #eceef2;
+    --on-surface: #eceef2;
+    --on-surface-variant: #949ba8;
+    --surface-variant: #282d37;
 
-    --primary: #ffffff;
-    --primary-container: #d4d4d4;
-    --primary-fixed: #5d5f5f;
-    --primary-fixed-dim: #454747;
-    --on-primary: #1a1c1c;
-    --on-primary-container: #000000;
-    --on-primary-fixed: #ffffff;
-    --on-primary-fixed-variant: #e2e2e2;
+    --primary: #f8fafc;
+    --primary-container: #334155;
+    --primary-fixed: #475569;
+    --primary-fixed-dim: #334155;
+    --on-primary: #0f172a;
+    --on-primary-container: #f8fafc;
+    --on-primary-fixed: #f8fafc;
+    --on-primary-fixed-variant: #cbd5e1;
 
-    --secondary: #c7c6c6;
-    --secondary-container: #464747;
-    --secondary-fixed: #c7c6c6;
-    --secondary-fixed-dim: #ababab;
-    --on-secondary: #1a1c1c;
-    --on-secondary-container: #e3e2e2;
-    --on-secondary-fixed: #1a1c1c;
-    --on-secondary-fixed-variant: #3a3c3c;
+    --secondary: #3b82f6;
+    --secondary-container: #1d4ed8;
+    --secondary-fixed: #1e3a8a;
+    --secondary-fixed-dim: #172554;
+    --on-secondary: #ffffff;
+    --on-secondary-container: #dbeafe;
+    --on-secondary-fixed: #dbeafe;
+    --on-secondary-fixed-variant: #93c5fd;
 
-    --tertiary: #e3e2e2;
-    --tertiary-container: #919090;
-    --tertiary-fixed: #5e5e5e;
-    --tertiary-fixed-dim: #464747;
-    --on-tertiary: #1b1c1c;
-    --on-tertiary-container: #000000;
+    --tertiary: #cbd5e1;
+    --tertiary-container: #334155;
+    --tertiary-fixed: #475569;
+    --tertiary-fixed-dim: #334155;
+    --on-tertiary: #0f172a;
+    --on-tertiary-container: #ffffff;
     --on-tertiary-fixed: #ffffff;
-    --on-tertiary-fixed-variant: #e3e2e2;
+    --on-tertiary-fixed-variant: #cbd5e1;
 
-    --error: #ffb4ab;
-    --error-container: #93000a;
-    --on-error: #690005;
-    --on-error-container: #ffdad6;
+    --error: #ef4444;
+    --error-container: #450a0a;
+    --on-error: #ffffff;
+    --on-error-container: #fca5a5;
 
-    --outline: #919191;
-    --outline-variant: #474747;
+    --outline: #4b5563;
+    --outline-variant: #262931;
 
-    --inverse-surface: #e2e2e2;
-    --inverse-on-surface: #303030;
-    --inverse-primary: #5d5f5f;
+    --inverse-surface: #eceef2;
+    --inverse-on-surface: #131519;
+    --inverse-primary: #475569;
   }
 }
  
 @layer base {
-  * {
-    /* Implement The "No-Line" Rule globally. Remove default borders globally except for specific outline cases */
-    border-color: transparent;
-  }
-  .dark * {
-    /* True Dark Monolith enforces strict 0px radius globally */
-    border-radius: 0px !important;
-  }
   body {
-    @apply bg-background text-on-background font-sans;
+    @apply bg-background text-on-background font-sans antialiased;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold;
+    @apply font-medium tracking-tight;
   }
 }
 
-/* Glassmorphism utility */
+/* Institutional hairline borders & utilities */
 @layer utilities {
-  .glass-panel {
-    @apply bg-surface/70 backdrop-blur-[12px];
-  }
-  .ghost-border {
-    border: 1px solid var(--outline-variant);
-    opacity: 0.85; /* Or handle the border opacity differently */
-  }
-  
-  /* Fallback alpha hex for ghost border */
   .border-ghost {
-    border: 1px solid transparent;
+    border: 1px solid var(--outline-variant);
   }
-  :root .border-ghost {
-    border-color: #c5c6cd26; /* 15% opacity hex for outline-variant */
+  .border-hairline {
+    border-width: 1px;
+    border-color: var(--outline-variant);
   }
-  .dark .border-ghost {
-    border-color: #47474726; /* Monolith outline-variant at 15% opacity */
-  }
-  .gradient-btn-primary {
-    @apply bg-gradient-to-r from-primary to-primary-container text-on-primary hover:-translate-y-[1px] hover:shadow-ambient transition-all rounded-md px-4 py-2 font-medium;
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
 }
 
-/* ── Print styles (FR-4.15) ─────────────────────────────────────────────── */
+/* ── Print styles (FR-4.15 & Unslop Multi-Page Print Pagination) ─────────────── */
 @media print {
-  /* Hide all chrome: sidebars, header actions, export menu */
-  header button,
+  /* Release all viewport and overflow containment */
+  html, body, #root, #alethian-report-container, main, aside, div {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+  }
+
+  /* Hide navigation, sidebars, drawers, and action bars */
+  header,
   aside,
-  #export-pdf-btn,
-  #export-json-btn,
-  #print-btn,
-  .no-print {
+  nav,
+  button,
+  .no-print,
+  #export-menu,
+  [role="dialog"] {
     display: none !important;
   }
 
-  /* Make the document viewer fill the page */
-  body, html {
-    background: #fff !important;
-    color: #000 !important;
-    font-size: 11pt !important;
+  /* Unconstrain flex containers to natural document flow */
+  .flex {
+    display: block !important;
   }
 
-  main {
-    width: 100% !important;
-    border: none !important;
-    box-shadow: none !important;
-    background: #fff !important;
-    overflow: visible !important;
-  }
-
-  /* Each document page becomes a print page */
+  /* Multi-page document page breaks */
   [id^="page-"] {
-    page-break-before: always;
+    display: block !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
     box-shadow: none !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 15mm 20mm !important;
     border: none !important;
-    min-height: unset !important;
+    margin: 0 auto 15mm auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: auto !important;
+    padding: 15mm 20mm !important;
   }
 
-  [id^="page-"]:first-of-type {
-    page-break-before: avoid;
+  [id^="page-"]:last-of-type {
+    page-break-after: auto !important;
+    break-after: auto !important;
   }
 
-  /* Preserve highlight colours in print */
+  /* Preserve highlighted forensic spans */
   mark {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
+
 
