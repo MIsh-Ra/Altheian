@@ -17,4 +17,47 @@ describe('reportStore', () => {
         toggleFilterType('web');
         expect(useReportStore.getState().filterTypes.web).toBe(true);
     });
+
+    it('manages active tab for dual-engine and forensic split view', () => {
+        const { setActiveTab } = useReportStore.getState();
+        expect(useReportStore.getState().activeTab).toBe('plagiarism');
+        setActiveTab('ai_detection');
+        expect(useReportStore.getState().activeTab).toBe('ai_detection');
+        setActiveTab('forensic_split');
+        expect(useReportStore.getState().activeTab).toBe('forensic_split');
+    });
+
+    it('stores and updates AI detection results and window selection', () => {
+        const { setAIDetectionResult, setSelectedWindow, setSelectedParagraph, setShowTamperDrawer } = useReportStore.getState();
+        const mockResult = {
+            id: 'ai-res-1',
+            verdict: 'T3_HIGH',
+            ai_probability: 0.94,
+            tamper_detected: true,
+            tamper_flags: [{ type: 'zero_width_chars', detail: 'Found 14 zero-width chars' }],
+            windows: [{ window_index: 0, binoculars_score: 0.72, verdict: 'T3_HIGH' }]
+        };
+        setAIDetectionResult(mockResult);
+        expect(useReportStore.getState().aiDetectionResult).toEqual(mockResult);
+
+        setSelectedWindow(0);
+        expect(useReportStore.getState().selectedWindowIndex).toBe(0);
+
+        setSelectedParagraph(2);
+        expect(useReportStore.getState().selectedParagraphIndex).toBe(2);
+
+        setShowTamperDrawer(true);
+        expect(useReportStore.getState().showTamperDrawer).toBe(true);
+    });
+
+    it('resets store back to initial state cleanly', () => {
+        const { resetReportStore } = useReportStore.getState();
+        resetReportStore();
+        const state = useReportStore.getState();
+        expect(state.selectedMatchId).toBeNull();
+        expect(state.activeTab).toBe('plagiarism');
+        expect(state.aiDetectionResult).toBeNull();
+        expect(state.selectedWindowIndex).toBeNull();
+        expect(state.showTamperDrawer).toBe(false);
+    });
 });

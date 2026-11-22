@@ -33,7 +33,7 @@ describe('Login Component', () => {
         render(<BrowserRouter><Login /></BrowserRouter>);
 
         // Actual placeholders from Login.jsx: "faculty@university.edu" and "••••••••"
-        fireEvent.change(screen.getByPlaceholderText('faculty@institution.edu'), { target: { value: 'test@edu' } });
+        fireEvent.change(screen.getByPlaceholderText('admin@alethian.edu or admin'), { target: { value: 'test@edu' } });
         fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'password' } });
         fireEvent.click(screen.getByText('Authenticate'));
 
@@ -47,7 +47,7 @@ describe('Login Component', () => {
         render(<BrowserRouter><Login /></BrowserRouter>);
 
         // Fill in required fields so the form actually submits
-        fireEvent.change(screen.getByPlaceholderText('faculty@institution.edu'), { target: { value: 'test@edu' } });
+        fireEvent.change(screen.getByPlaceholderText('admin@alethian.edu or admin'), { target: { value: 'test@edu' } });
         fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'password' } });
         fireEvent.click(screen.getByText('Authenticate'));
 
