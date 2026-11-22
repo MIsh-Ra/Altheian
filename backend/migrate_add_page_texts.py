@@ -3,7 +3,7 @@
 Safe migration: adds page_texts column to documents table if it doesn't exist.
 Run once against existing databases after upgrading to this version.
 Usage:
-    cd Alethian/backend
+    cd backend
     python migrate_add_page_texts.py
 """
 import os

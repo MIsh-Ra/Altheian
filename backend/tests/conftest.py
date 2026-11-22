@@ -30,7 +30,11 @@ def pytest_addoption(parser):
     )
     parser.addoption(
         "--archive-path", action="store",
-        default=os.path.join(os.path.dirname(__file__), "..", "..", "..", "Alethian_documents"),
+        default=(
+            os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "Alethian_documents"))
+            if os.path.exists(os.path.join(os.path.dirname(__file__), "..", "..", "Alethian_documents"))
+            else os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "Alethian_documents"))
+        ),
         help="Path to the Alethian_documents archive directory"
     )
 

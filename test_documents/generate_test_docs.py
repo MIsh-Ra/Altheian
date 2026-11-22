@@ -15,7 +15,7 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
-OUTPUT_DIR = "/home/akshit/Projects/Plag-checkv1/Alethian/test_documents"
+OUTPUT_DIR = str(Path(__file__).resolve().parent)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 styles = getSampleStyleSheet()
