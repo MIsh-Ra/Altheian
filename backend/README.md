@@ -15,7 +15,7 @@ pip install -r requirements.txt
 
 ### Environment Variables
 
-The backend reads from `Alethian/.env` (three directories up from `app/core/config.py`). See `.env.example` for all options. Critical variables:
+The backend reads from `.env` in the repository root. See `.env.example` for all options. Critical variables:
 
 | Variable | Default | Description |
 |:---------|:--------|:------------|

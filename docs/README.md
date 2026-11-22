@@ -5,7 +5,7 @@ This directory contains the central technical documentation, architectural speci
 ## Directory Structure
 
 ```
-Alethian/docs/
+docs/
 ├── API_REFERENCE.md                       # Comprehensive REST API reference & endpoint contracts
 ├── DEPLOYMENT.md                          # Cluster (DGX) & local container deployment manual
 ├── TESTING.md                             # Testing standards, benchmark definitions, and execution

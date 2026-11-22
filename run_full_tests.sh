@@ -12,7 +12,11 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MOCK_SERPER=${MOCK_SERPER:-false}
-ARCHIVE_PATH=${ARCHIVE_PATH:-"$SCRIPT_DIR/../Alethian_documents"}
+if [ -d "$SCRIPT_DIR/Alethian_documents" ]; then
+    ARCHIVE_PATH=${ARCHIVE_PATH:-"$SCRIPT_DIR/Alethian_documents"}
+else
+    ARCHIVE_PATH=${ARCHIVE_PATH:-"$SCRIPT_DIR/../Alethian_documents"}
+fi
 
 echo "=============================================="
 echo " Alethian V2 Full Test Suite (Zero Mock)"
