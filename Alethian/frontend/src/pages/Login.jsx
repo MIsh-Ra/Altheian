@@ -8,7 +8,9 @@ export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+    const searchParams = new URLSearchParams(window.location.search);
+    const isExpired = searchParams.get('expired') === 'true';
+    const [error, setError] = useState(isExpired ? 'Session expired. Please sign in again.' : '');
     const navigate = useNavigate();
     const { theme } = useTheme();
 

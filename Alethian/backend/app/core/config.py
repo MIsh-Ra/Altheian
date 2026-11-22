@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     
     JWT_SECRET: str = "change-me-in-production"
     JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRY_MINUTES: int = 60
+    JWT_EXPIRY_MINUTES: int = 1440
     
     SERPER_API_KEY: str = ""
     REDIS_HOST: str = "localhost"

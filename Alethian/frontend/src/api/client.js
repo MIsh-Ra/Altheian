@@ -13,6 +13,21 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+// Auto-purge stale/expired JWT tokens on 401 and redirect to login
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            localStorage.removeItem('alethian_token');
+            localStorage.removeItem('alethian_user');
+            if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+                window.location.href = '/login?expired=true';
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+
 const Client = {
     auth: {
         login: async (username, password) => {
