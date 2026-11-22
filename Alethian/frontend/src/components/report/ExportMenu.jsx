@@ -55,12 +55,12 @@ export default function ExportMenu() {
         window.print();
     };
 
-    const btnBase = `inline-flex items-center px-3 py-2 text-xs font-mono font-bold tracking-widest uppercase
-        border border-ghost bg-surface-container text-on-surface-variant
-        hover:border-outline hover:text-on-surface transition-colors disabled:opacity-50`;
+    const btnBase = `inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded text-xs font-medium
+        border border-ghost bg-surface text-on-surface
+        hover:bg-surface-container hover:text-on-surface transition-colors disabled:opacity-50 select-none`;
 
     return (
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2" id="export-menu">
             <button
                 id="export-pdf-btn"
                 onClick={handlePdfExport}
@@ -69,9 +69,9 @@ export default function ExportMenu() {
                 className={btnBase}
             >
                 {exporting === 'pdf'
-                    ? <Loader2 className="w-3 h-3 mr-2 animate-spin" />
-                    : <Download className="w-3 h-3 mr-2" />}
-                {exporting === 'pdf' ? 'GENERATING...' : 'EXPORT PDF'}
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin text-secondary" strokeWidth={1.5} />
+                    : <Download className="w-3.5 h-3.5 text-on-surface-variant" strokeWidth={1.5} />}
+                <span>{exporting === 'pdf' ? 'GENERATING...' : 'EXPORT PDF'}</span>
             </button>
 
             <button
@@ -82,21 +82,22 @@ export default function ExportMenu() {
                 className={btnBase}
             >
                 {exporting === 'json'
-                    ? <Loader2 className="w-3 h-3 mr-2 animate-spin" />
-                    : <FileJson className="w-3 h-3 mr-2" />}
-                JSON
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin text-secondary" strokeWidth={1.5} />
+                    : <FileJson className="w-3.5 h-3.5 text-on-surface-variant" strokeWidth={1.5} />}
+                <span>JSON</span>
             </button>
 
             <button
                 id="print-btn"
                 onClick={handlePrint}
                 disabled={!!exporting}
-                title="Print report"
+                title="Print full multi-page report"
                 className={btnBase}
             >
-                <Printer className="w-3 h-3 mr-2" />
-                PRINT
+                <Printer className="w-3.5 h-3.5 text-on-surface-variant" strokeWidth={1.5} />
+                <span>PRINT</span>
             </button>
         </div>
     );
 }
+
