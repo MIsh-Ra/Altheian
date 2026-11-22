@@ -141,7 +141,7 @@ def analyze_document(self, document_id: str, file_path: str):
         all_raw_matches = internal_matches + web_matches
 
         doc_word_count = len(text.split())
-        score = calculate_originality(all_raw_matches, doc_word_count)
+        score = calculate_originality(all_raw_matches, doc_word_count, doc_text=text)
         risk = "high" if score < 50 else ("moderate" if score < 80 else "low")
 
         report = Report(
@@ -209,7 +209,7 @@ def analyze_document(self, document_id: str, file_path: str):
             db.add(match_record)
 
         # --- Generate & Persist Heatmap ---
-        heatmap = generate_heatmap(all_raw_matches, doc.page_count, doc_word_count=doc_word_count)
+        heatmap = generate_heatmap(all_raw_matches, doc.page_count, doc_word_count=doc_word_count, page_texts=page_texts)
         for h in heatmap:
             hp = HeatmapPage(
                 report_id=report.id,
