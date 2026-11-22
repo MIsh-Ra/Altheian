@@ -44,15 +44,13 @@ class Stage2EscalationAudit:
     Combines frontier Llama-3-8B pair (Binoculars + DNA + IRM) with FP32 DeBERTa-v3.
     """
 
-    # Threshold constants per v3.0 specification
-    ESCALATION_TRIGGER_THRESHOLD: float = (
-        0.8536  # Stage 1 Score < 0.8536 triggers Stage 2
-    )
-    T0_HUMAN_THRESHOLD: float = 0.9015
-    T2_MIXED_THRESHOLD: float = 0.8536
-    T3_HIGH_THRESHOLD: float = 0.8350
-    DNA_AI_THRESHOLD: float = 0.7500
-    IRM_AI_THRESHOLD: float = 0.1500
+    # Threshold constants calibrated for Qwen2.5 (Performer PPL / Observer-Performer Cross-PPL)
+    ESCALATION_TRIGGER_THRESHOLD: float = 1.03  # Score >= 1.03 triggers Stage 2
+    T0_HUMAN_THRESHOLD: float = 1.01
+    T2_MIXED_THRESHOLD: float = 1.05
+    T3_HIGH_THRESHOLD: float = 1.09
+    DNA_AI_THRESHOLD: float = 0.38
+    IRM_AI_THRESHOLD: float = -0.05
     DEBERTA_AI_THRESHOLD: float = 0.5000
     DEBERTA_HIGH_AI_THRESHOLD: float = 0.8000
 
@@ -64,9 +62,9 @@ class Stage2EscalationAudit:
     def should_escalate(self, stage1_binoculars: float) -> bool:
         """
         Determines whether a document or section requires Stage 2 escalation.
-        Only borderline / indeterminate submissions (< 0.8536) escalate.
+        Submissions with elevated or borderline AI signals (>= 1.03) escalate.
         """
-        return stage1_binoculars < self.ESCALATION_TRIGGER_THRESHOLD
+        return stage1_binoculars >= self.ESCALATION_TRIGGER_THRESHOLD
 
     def compute_irm_ratio(
         self,
@@ -235,12 +233,12 @@ class Stage2EscalationAudit:
             stage2_binoculars if stage2_binoculars is not None else stage1_binoculars
         )
 
-        # Evaluate individual metric flags
-        bino_ai = effective_bino < self.T3_HIGH_THRESHOLD
-        bino_mixed = self.T3_HIGH_THRESHOLD <= effective_bino < self.T2_MIXED_THRESHOLD
-        bino_human = effective_bino >= self.T0_HUMAN_THRESHOLD
+        # Evaluate individual metric flags (Qwen2.5 scale: higher ratio indicates synthetic AI generation)
+        bino_ai = effective_bino >= self.T3_HIGH_THRESHOLD
+        bino_mixed = self.T2_MIXED_THRESHOLD <= effective_bino < self.T3_HIGH_THRESHOLD
+        bino_human = effective_bino < self.T0_HUMAN_THRESHOLD
 
-        dna_ai = dna_score is not None and dna_score < self.DNA_AI_THRESHOLD
+        dna_ai = dna_score is not None and dna_score > self.DNA_AI_THRESHOLD
         irm_ai = irm_score is not None and irm_score > self.IRM_AI_THRESHOLD
         deberta_ai = (
             deberta_prob is not None and deberta_prob >= self.DEBERTA_AI_THRESHOLD
@@ -253,7 +251,7 @@ class Stage2EscalationAudit:
         )
 
         flags = {
-            "binoculars_ai": bool(effective_bino < self.T2_MIXED_THRESHOLD),
+            "binoculars_ai": bool(effective_bino >= self.T2_MIXED_THRESHOLD),
             "dna_ai": bool(dna_ai),
             "irm_ai": bool(irm_ai),
             "deberta_ai": bool(deberta_ai),
@@ -262,7 +260,7 @@ class Stage2EscalationAudit:
         # Count corroborating AI indicators
         active_ai_signals = sum(
             [
-                effective_bino < self.T2_MIXED_THRESHOLD,
+                effective_bino >= self.T2_MIXED_THRESHOLD,
                 dna_ai,
                 irm_ai,
                 deberta_ai,

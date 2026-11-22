@@ -49,17 +49,17 @@ class BinocularsResult(BaseModel):
 
 def classify_evidentiary_tier(score: float) -> str:
     """
-    Classifies a Binoculars score into standard evidentiary tiers:
-    - score >= 0.9015 -> 'T0_HUMAN' (Statistically consistent with human authorship)
-    - 0.8536 <= score < 0.9015 -> 'T1_INDETERMINATE' (Indeterminate human/AI overlap zone)
-    - score < 0.8536 -> 'ESCALATE' (Elevated AI signal requiring Stage 2 audit)
+    Classifies a Binoculars score into standard evidentiary tiers calibrated for Qwen2.5:
+    - score < 1.01 -> 'T0_HUMAN' (Statistically consistent with human authorship)
+    - 1.01 <= score < 1.07 -> 'T1_INDETERMINATE' (Indeterminate human/AI overlap zone)
+    - score >= 1.07 -> 'ESCALATE' (Elevated AI signal requiring Stage 2 audit)
     """
-    if score >= 0.9015:
-        return "T0_HUMAN"
-    elif score >= 0.8536:
+    if score >= 1.07:
+        return "ESCALATE"
+    elif score >= 1.01:
         return "T1_INDETERMINATE"
     else:
-        return "ESCALATE"
+        return "T0_HUMAN"
 
 
 def upcast_logits_to_fp32(logits: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
