@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel, Field
 
 class SimilarityThresholds(BaseModel):
@@ -23,6 +24,7 @@ class AdminConfigResponse(BaseModel):
     web_dragnet: WebDragnetConfig
     api_status: ApiStatus
     archive_stats: ArchiveStats
+    serper_api_key: Optional[str] = None
 
 class AdminConfigUpdate(BaseModel):
     serper_api_key: str = None

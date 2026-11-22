@@ -13,10 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 class SerperClient:
-    """Search client with snippets-first approach, Redis caching, ddgs fallback."""
+    """Search client with snippets-first approach, Redis caching, dual Serper/SerpApi gateway, ddgs fallback."""
 
-    def __init__(self):
-        self.api_key = os.getenv("SERPER_API_KEY", "")
+    def __init__(self, api_key: Optional[str] = None):
         import redis
         try:
             self.cache = redis.Redis(
@@ -27,6 +26,26 @@ class SerperClient:
         except Exception as e:
             logger.warning(f"Redis cache unavailable: {e}")
             self.cache = None
+
+        redis_key = None
+        if self.cache:
+            try:
+                val = self.cache.get("config:serper_api_key")
+                if isinstance(val, str):
+                    redis_key = val
+            except Exception:
+                pass
+
+        self.api_key = api_key or redis_key or os.getenv("SERPAPI_API_KEY") or os.getenv("SERPER_API_KEY", "")
+        search_url = os.getenv("SEARCH_ENGINE_URL", "")
+
+        # Auto-detect SerpApi vs Serper.dev
+        if "serpapi.com" in search_url.lower() or (self.api_key and "serpapi" in self.api_key.lower()) or os.getenv("SERPAPI_API_KEY"):
+            self.engine_type = "serpapi"
+            self.endpoint = "https://serpapi.com/search.json"
+        else:
+            self.engine_type = "serper"
+            self.endpoint = "https://google.serper.dev/search"
 
     def search(self, query: str, num_results: int = 5) -> List[Dict[str, str]]:
         """
@@ -46,22 +65,37 @@ class SerperClient:
         results = []
         if self.api_key and self.api_key not in ("", "PASTE_YOUR_KEY_HERE"):
             try:
-                response = requests.post(
-                    "https://google.serper.dev/search",
-                    headers={'X-API-KEY': self.api_key, 'Content-Type': 'application/json'},
-                    data=json.dumps({"q": query, "num": num_results}),
-                    timeout=settings.SERPER_TIMEOUT
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    for item in data.get("organic", []):
-                        results.append({
-                            "url": item.get("link", ""),
-                            "title": item.get("title", ""),
-                            "snippet": item.get("snippet", ""),
-                        })
+                if self.engine_type == "serpapi":
+                    response = requests.get(
+                        self.endpoint,
+                        params={"q": query, "num": num_results, "api_key": self.api_key, "engine": "google"},
+                        timeout=settings.SERPER_TIMEOUT
+                    )
+                    if response.status_code == 200:
+                        data = response.json()
+                        for item in data.get("organic_results", []):
+                            results.append({
+                                "url": item.get("link", ""),
+                                "title": item.get("title", ""),
+                                "snippet": item.get("snippet", ""),
+                            })
+                else:
+                    response = requests.post(
+                        self.endpoint,
+                        headers={'X-API-KEY': self.api_key, 'Content-Type': 'application/json'},
+                        data=json.dumps({"q": query, "num": num_results}),
+                        timeout=settings.SERPER_TIMEOUT
+                    )
+                    if response.status_code == 200:
+                        data = response.json()
+                        for item in data.get("organic", []):
+                            results.append({
+                                "url": item.get("link", ""),
+                                "title": item.get("title", ""),
+                                "snippet": item.get("snippet", ""),
+                            })
             except Exception as e:
-                logger.warning(f"Serper API failed: {e}")
+                logger.warning(f"{self.engine_type} API failed: {e}")
 
         # DuckDuckGo fallback using ddgs (renamed from duckduckgo_search)
         if not results:
