@@ -1,0 +1,53 @@
+flowchart TD
+    subgraph InputText ["Input Student Writing (s)"]
+        HumanText["Authentic Native Writing\n(High Burstiness, Varied Entropy)"]
+        ESLText["Authentic Non-Native (ESL) Writing\n(Simpler Connectors, Formulaic Phrases)"]
+        AIText["Synthetic AI Generated Writing\n(Uniform Low-Entropy, Mode-Seeking)"]
+    end
+
+    subgraph NeuralInference ["Dual-Stream Language Model Forward Pass"]
+        M_obs["Observer Model M_obs\n(Qwen2.5-0.5B Base)"]
+        M_perf["Performer Model M_perf\n(Qwen2.5-0.5B-Instruct)"]
+        
+        FormulaNumer["Numerator: log PPL(M_perf)\n-1/N sum log p_perf(t_i)"]
+        FormulaDenom["Denominator: log xPPL(M_obs, M_perf)\n-1/N sum sum p_obs(v) log p_perf(v)"]
+    end
+
+    subgraph RatioCalc ["Binoculars Cross-Ratio Calculation"]
+        Ratio["Binoculars Ratio = Numerator / Denominator"]
+    end
+
+    subgraph Dynamics ["Distribution & Invariant Behavior"]
+        subgraph HumanDynamics ["1. Human Case"]
+            H_Num["Moderate / High PPL\n(Unexpected tokens)"]
+            H_Den["Moderate xPPL\n(Model alignment)"]
+            H_Res["Ratio < 1.01\nVerdict: T0_HUMAN"]
+            H_Num & H_Den --> H_Res
+        end
+
+        subgraph ESLDynamics ["2. ESL Self-Normalizing Invariant"]
+            ESL_Num["Low PPL\n(Simple words are predictable)"]
+            ESL_Den["Low xPPL\n(Both models agree on simple words)"]
+            ESL_Res["Ratio ~ 1.0 (Balanced)\nVerdict: T0_HUMAN (No False Flag)"]
+            ESL_Num & ESL_Den --> ESL_Res
+        end
+
+        subgraph AIDynamics ["3. Synthetic AI Case"]
+            AI_Num["Very Low PPL\n(High certainty on LLM output)"]
+            AI_Den["Moderate / Stable xPPL\n(Full vocabulary entropy)"]
+            AI_Res["Ratio >= 1.07\nVerdict: T3_HIGH (AI Flagged)"]
+            AI_Num & AI_Den --> AI_Res
+        end
+    end
+
+    HumanText --> M_perf & M_obs
+    ESLText --> M_perf & M_obs
+    AIText --> M_perf & M_obs
+
+    M_perf --> FormulaNumer
+    M_obs --> FormulaDenom
+
+    FormulaNumer & FormulaDenom --> Ratio
+    Ratio --> HumanDynamics
+    Ratio --> ESLDynamics
+    Ratio --> AIDynamics

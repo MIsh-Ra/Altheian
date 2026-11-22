@@ -164,6 +164,13 @@ Alethian/
 │   │   └── tests/               # Vitest test suite
 │   └── package.json
 │
+├── BTP_Report/                  # Complete BTP Report, Slides Blueprint, SVGs & Figures
+│   ├── TECHNICAL_REPORT.md      # Full academic systems report & chapter guide
+│   ├── PREFACE_PRESENTATION_BLUEPRINT.md # 10-slide presentation blueprint & cue cards
+│   ├── VIVA_DEFENSE_QA.md       # Master defense Q&A reference
+│   ├── figures/                 # Exported vector SVGs & LaTeX snippets
+│   └── benchmarks/              # Empirical results & raw CSV metrics
+│
 ├── docs/                        # Consolidated documentation & v3 specifications
 │   ├── specs/                   # System architecture blueprints & data contracts
 │   ├── API_REFERENCE.md
@@ -185,7 +192,10 @@ Alethian/
 | Document | Path | Description |
 |:---------|:-----|:------------|
 | **This README** | `README.md` | Project overview and quick start |
-| **BTP Handover & System Report** | `docs/V3_BTP_HANDOVER_AND_TECHNICAL_REPORT.md` | Master technical briefing for BTP report & presentation |
+| **BTP Report & Slides Workspace** | `BTP_Report/README.md` | Complete BTP report, presentation guide, SVGs & metrics |
+| **BTP Technical Report** | `BTP_Report/TECHNICAL_REPORT.md` | Master technical briefing for BTP report chapters |
+| **Presentation Blueprint** | `BTP_Report/PREFACE_PRESENTATION_BLUEPRINT.md` | 10-slide preface presentation guide & speaker scripts |
+| **Viva Defense Q&A** | `BTP_Report/VIVA_DEFENSE_QA.md` | Master defense Q&A with mathematical derivations |
 | **Documentation Hub** | `docs/README.md` | Complete index of all guides and specifications |
 | **Backend Guide** | `backend/README.md` | API reference, worker pipeline, configuration |
 | **Testing Guide** | `docs/TESTING.md` | Zero-mock test architecture, running tests |

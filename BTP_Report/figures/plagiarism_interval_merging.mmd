@@ -1,0 +1,36 @@
+flowchart TD
+    subgraph RawDoc ["Input Extracted Text (e.g. Table of Contents & Prose)"]
+        TOC["TOC Excerpt:\n'. . . . . . . . . . 12'\n(Pure dot leaders & page numbers)"]
+        OverlappingProse["Matched Passage:\n'The convolutional network extracts spatial features from images...'"]
+    end
+
+    subgraph LegacyFlaw ["Legacy Engine Flaws (v2 / Turnitin-style)"]
+        L_Count["1. Naive Word Counting:\nCounts every non-whitespace token.\nTOC dots & numbers counted as 11 words!"]
+        L_Sum["2. Raw Overlapping Shingle Summation:\nMatch 1 (Words 1-6): 6 words\nMatch 2 (Words 3-8): 6 words\nMatch 3 (Words 5-10): 6 words\nSum = 18 words (Double-Counting Overlaps!)"]
+        L_Result["Artificial Plagiarism Inflation\n(Low Originality / False Positives)"]
+        L_Count & L_Sum --> L_Result
+    end
+
+    subgraph AlethianV3Solution ["Alethian v3 Mathematical Remediation"]
+        subgraph SubstantiveFilter ["Substantive Word Filter"]
+            V3_Filter["_count_substantive_words(text):\nRequires at least one alphabetic character.\nPure dot leaders & numbers return: 0 substantive words!"]
+        end
+
+        subgraph IntervalMerge ["1D Mathematical Interval Merging"]
+            V3_Ranges["Extract Character Spans:\n[0, 35], [20, 55], [40, 75]"]
+            V3_Merged["Contiguous Disjoint Union:\nMerged Span = [0, 75]\nZero Double-Counting!"]
+            V3_Ranges --> V3_Merged
+        end
+
+        subgraph TwinClamp ["Identical Twin Document Safeguard"]
+            V3_Twin{"Substantive Match Coverage > 85%?"}
+            V3_Twin -->|Yes| Clamped["Clamp Originality to 0.0%\n(Catches Identical Clones)"]
+            V3_Twin -->|No| Normal["Originality = (1 - Coverage) * 100%"]
+        end
+    end
+
+    TOC --> V3_Filter
+    TOC --> L_Count
+    OverlappingProse --> L_Sum
+    OverlappingProse --> V3_Ranges
+    V3_Merged --> V3_Twin

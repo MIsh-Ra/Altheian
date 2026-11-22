@@ -1,0 +1,57 @@
+flowchart TD
+    subgraph ClientLayer ["Frontend Client (React 19 + Tailwind CSS)"]
+        UI["Focus Canvas (ProseViewer)"]
+        Inspector["Forensic Inspector (Matches, AI Audit, Sources)"]
+        Radar["Page Radar Margin Strip"]
+        WSClient["WebSocket Live Status Listener"]
+    end
+
+    subgraph APILayer ["FastAPI Gateway (Uvicorn - Port 8000)"]
+        AuthRouter["/api/v1/auth (JWT Authentication)"]
+        DocRouter["/api/v1/documents (Upload & Status)"]
+        RepRouter["/api/v1/reports (Plagiarism Results & PDF Export)"]
+        AIRouter["/api/v1/ai-detection (Forensic Telemetry)"]
+        WSServer["/api/v1/documents/{id}/status (WebSocket Broadcast)"]
+    end
+
+    subgraph TaskBroker ["Message Broker & Storage"]
+        RedisQueue[("Redis (Port 6379)\nTask Queues & Pub/Sub")]
+        PostgresDB[("PostgreSQL 15 (Port 5434)\nDocuments, Reports, AI Telemetry")]
+        QdrantDB[("Qdrant Vector DB (Port 6333)\nDense Sentence Embeddings")]
+    end
+
+    subgraph WorkerLayer ["Distributed Celery Workers"]
+        subgraph PlagiarismWorker ["Celery CPU Worker (celery_worker)"]
+            DocParser["PyMuPDF / pdfplumber Extraction + OCR Fallback"]
+            Shingler["6-Gram Shingler & Jaccard Similarity"]
+            VectorMatcher["all-MiniLM-L6-v2 Semantic Matcher"]
+            WebDragnet["Serper API / DDGS Live Web Crawler"]
+            PlagReport["Report Engine (Substantive Originality)"]
+        end
+
+        subgraph AIWorker ["Celery GPU Forensics Worker (celery_ai_worker) - GPU 4"]
+            Stage0["Stage 0: Preprocessor & Adversarial Gate"]
+            Stage1["Stage 1: Binoculars + DNA-DetectLLM (Qwen2.5-0.5B Pair)"]
+            Stage2["Stage 2: IRM + DeBERTa Consensus Escalation"]
+            Localization["WCP+NOT Change-Point Paragraph Segmenter"]
+        end
+    end
+
+    UI -->|Upload Document| DocRouter
+    DocRouter -->|Save File| PostgresDB
+    DocRouter -->|Dispatch Tasks| RedisQueue
+    RedisQueue -->|Plagiarism Task| PlagiarismWorker
+    RedisQueue -->|AI Forensics Task| AIWorker
+
+    PlagiarismWorker -->|Query Vectors| QdrantDB
+    PlagiarismWorker -->|Live Search| WebDragnet
+    PlagiarismWorker -->|Save Report| PostgresDB
+    PlagiarismWorker -->|Progress Updates| RedisQueue
+
+    AIWorker -->|Save Telemetry & Windows| PostgresDB
+    AIWorker -->|Progress Updates| RedisQueue
+
+    RedisQueue -->|Live Broadcast| WSServer
+    WSServer -->|Live State| WSClient
+    Inspector -->|Fetch Forensic Audit| AIRouter
+    UI -->|Fetch Full Report| RepRouter

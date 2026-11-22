@@ -89,3 +89,8 @@ Alethian_documents/
 !test_documents/*.pdf
 !test_documents/**/*.pdf
 !backup/**/*.pdf
+
+# Tooling & Local Configs
+puppeteer-config.json
+
+

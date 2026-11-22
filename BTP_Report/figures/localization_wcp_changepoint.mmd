@@ -1,0 +1,53 @@
+flowchart TD
+    subgraph DocText ["Document Stream (e.g. 15-Page Dissertation)"]
+        P1["Paragraph 1: Introduction\n(Human Authored)"]
+        P2["Paragraph 2: Related Work\n(Human Authored)"]
+        P3["Paragraph 3: Methodology\n(AI Generated via ChatGPT)"]
+        P4["Paragraph 4: Experimental Design\n(AI Generated via Claude)"]
+        P5["Paragraph 5: Discussion & Conclusion\n(Human Authored)"]
+    end
+
+    subgraph Windowing ["Sliding Context Windowing"]
+        W1["Window 0..256 tokens\n(Stride 128, Discard 64 Warmup)"]
+        W2["Window 128..384 tokens"]
+        W3["Window 256..512 tokens"]
+        W4["Window 384..640 tokens"]
+        W5["Window 512..768 tokens"]
+    end
+
+    subgraph NeuralScores ["Neural Log-Likelihood Trajectory y_1..y_n"]
+        S_W1["Score: 0.982 (Low AI)"]
+        S_W2["Score: 0.985 (Low AI)"]
+        S_W3["Score: 1.135 (High AI Shift)"]
+        S_W4["Score: 1.140 (High AI Shift)"]
+        S_W5["Score: 0.988 (Return to Low AI)"]
+    end
+
+    subgraph WCP ["Weighted Change-Point (WCP+NOT) Algorithm"]
+        CostMin["Cost Minimization over candidate tau:\nmin sum(y_i - mu_1)^2 + sum(y_i - mu_2)^2 + beta * log(n)"]
+        Tau1["Inflection Point 1: tau_1 at Token 310 (Boundary: P2 -> P3)"]
+        Tau2["Inflection Point 2: tau_2 at Token 620 (Boundary: P4 -> P5)"]
+    end
+
+    subgraph ParagraphOutput ["Localized Paragraph Risk Gradient"]
+        R1["Paragraph 1: Risk = 0.05 (Green - Clean Human)"]
+        R2["Paragraph 2: Risk = 0.08 (Green - Clean Human)"]
+        R3["Paragraph 3: Risk = 0.94 (Red - AI Generated)"]
+        R4["Paragraph 4: Risk = 0.96 (Red - AI Generated)"]
+        R5["Paragraph 5: Risk = 0.04 (Green - Clean Human)"]
+    end
+
+    P1 & P2 --> W1 & W2
+    P3 & P4 --> W3 & W4
+    P5 --> W5
+
+    W1 --> S_W1
+    W2 --> S_W2
+    W3 --> S_W3
+    W4 --> S_W4
+    W5 --> S_W5
+
+    S_W1 & S_W2 & S_W3 & S_W4 & S_W5 --> CostMin
+    CostMin --> Tau1 & Tau2
+
+    Tau1 & Tau2 --> R1 & R2 & R3 & R4 & R5

@@ -1,0 +1,37 @@
+flowchart LR
+    subgraph BrowserViewport ["Alethian Forensic Workbench (React 19)"]
+        direction LR
+
+        subgraph LeftNav ["Margin Strip (5%)"]
+            Radar["Page Radar\n• Vertical proportional pages\n• Density color coding\n• Instant jump navigation"]
+        end
+
+        subgraph CenterCanvas ["Focus Canvas (70% - 95%)"]
+            Prose["ProseViewer Component\n• Unslop 4px Grid Layout\n• Fluid Paper-White Typography\n• Soft-tint Plagiarism Highlights\n• Yellow/Red Risk Underlines\n• Click phrase -> inspect match"]
+        end
+
+        subgraph RightDrawer ["Collapsible Forensic Inspector (25%)"]
+            direction TB
+            Tabs["Inspector Tabs:\n[Matches | AI Audit | Sources | Sign-off]"]
+            
+            subgraph Tab1 ["Tab 1: Matched Sources"]
+                MCard["Source Match Cards\n• % Overlap\n• Side-by-Side Dual Diff\n• Word strike-through"]
+            end
+
+            subgraph Tab2 ["Tab 2: AI Forensics Audit"]
+                BinoMetrics["Evidentiary Tier Stamp\n• Plain-Language Rationales\n• Binoculars Ratio & DNA Score\n• Tamper Alert Diagnostics\n• Change-Point Paragraph Timeline"]
+            end
+
+            subgraph Tab3 ["Tab 3: Sources Breakdown"]
+                PieChart["Source Distribution\n• Institutional Archive %\n• Live Internet Search %"]
+            end
+
+            subgraph Tab4 ["Tab 4: Sign-off Seal"]
+                Seal["Digital Signature Seal\n• SHA-256 Monospace Hash\n• Faculty Examiner Endorsement\n• Verified PDF Certificate Export"]
+            end
+        end
+    end
+
+    Radar -->|Scroll Sync| Prose
+    Prose -->|Click Highlight| Tabs
+    Tabs --> Tab1 & Tab2 & Tab3 & Tab4

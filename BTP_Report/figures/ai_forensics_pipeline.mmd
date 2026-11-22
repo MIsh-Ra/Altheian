@@ -1,0 +1,58 @@
+flowchart TD
+    RawDoc["Raw Document Text"] --> Pre["Stage 0: Preprocessing & Adversarial Gate"]
+
+    subgraph S0 ["Stage 0: Sanitization & Filtering"]
+        Pre --> Confusable["UTS #39 Homoglyph Normalization"]
+        Confusable --> Invisibles["Zero-Width Glyph Stripping (\\u200B, \\u200D)"]
+        Invisibles --> Masks["LaTeX Equations & Citation Masking"]
+        Masks --> TokenCheck{"Prose Tokens >= 150?"}
+        TokenCheck -->|No| Abstain["ABSTAIN\n(Insufficient Text for Statistical Evaluation)"]
+        TokenCheck -->|Yes| CleanTokens["Sanitized Token Sequence (s)"]
+    end
+
+    CleanTokens --> S1
+
+    subgraph S1 ["Stage 1: Dual-Stream Zero-Shot Inference (GPU 4)"]
+        direction TB
+        subgraph Models ["Qwen2.5-0.5B Family (FP16 + SDPA)"]
+            Observer["Observer Model M_obs\n(Qwen2.5-0.5B Base)"]
+            Performer["Performer Model M_perf\n(Qwen2.5-0.5B-Instruct)"]
+        end
+
+        CleanTokens --> Observer
+        CleanTokens --> Performer
+
+        Observer --> Denom["Cross-Perplexity (xPPL)\n-1/N sum log p_perf(v) * p_obs(v)"]
+        Performer --> Numer["Performer Log-PPL\n-1/N sum log p_perf(t_i)"]
+        
+        Numer & Denom --> BinoScore["Binoculars Score = Numerator / Denominator\n(FP32 Upcast Logits)"]
+        
+        Performer --> DNAScore["DNA-DetectLLM Template Divergence\nPPL(s) / PPL(s | Template t)\n(+60ms CPU Compute)"]
+        
+        BinoScore & DNAScore --> S1Verdict{"Evidentiary Tier Evaluation"}
+    end
+
+    S1Verdict -->|< 1.01| T0["T0: Human Authorship\n(0% AI - Burstiness Confirmed)"]
+    S1Verdict -->|>= 1.07| T3["T3: High Synthetic Confidence\n(Uniform Low-Entropy Detection)"]
+    S1Verdict -->|1.01 to 1.07| S2["Stage 2: Evidentiary Escalation Audit"]
+
+    subgraph S2Section ["Stage 2: Escalation & Consensus Arbitration"]
+        S2 --> IRM["Meta-Llama-3-8B IRM\n(Implicit Reward Model Divergence)"]
+        S2 --> DeBERTa["DeBERTa-v3 FP32\n(Academic Cross-Encoder Classifier)"]
+        IRM & DeBERTa --> Arbitration{"Consensus Voting\n(>= 2 Independent Models Agree?)"}
+        Arbitration -->|Consensus Synthetic| S2Elevated["T2: Elevated Synthetic Risk"]
+        Arbitration -->|Consensus Human / Ambiguous| S2Inconclusive["T1: Indeterminate / Inconclusive"]
+    end
+
+    CleanTokens --> LocEngine
+
+    subgraph LocEngine ["Localization: WCP+NOT Paragraph Boundary Detection"]
+        direction TB
+        Sliding["Sliding Window Ingestion\n(256 tokens, 64-token warmup discard)"]
+        Inflection["WCP+NOT Change-Point Minimization\nmin Var(1:tau) + Var(tau+1:n) + beta log(n)"]
+        ParaMap["Paragraph Risk Mapping\nGreen: Human | Yellow: Mixed | Red: AI"]
+        Sliding --> Inflection --> ParaMap
+    end
+
+    T0 & T3 & S2Elevated & S2Inconclusive --> FinalReport["Comprehensive Forensic Report & Digital Signature"]
+    ParaMap --> FinalReport

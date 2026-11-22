@@ -1,0 +1,11 @@
+document_name,document_category,expected_originality_pct,actual_originality_pct,expected_verdict,actual_verdict,binoculars_ratio,dna_detect_score,tamper_flag_count,gpu_vram_mb,latency_ms
+01_Human_Authentic_Research.pdf,Authentic Human Research,>90,98.4,T0_HUMAN,T0_HUMAN,0.9812,1.0421,0,2780,1180
+02_Synthetic_AI_Generated.pdf,Pure Generative AI (GPT-4o),100,100.0,T3_HIGH,T3_HIGH,1.1324,0.9912,0,2780,1210
+03_Hybrid_ChangePoint_Sample.pdf,Hybrid Mixed Document,~85,86.2,LOCALIZED_AI,LOCALIZED_AI,1.0850,1.0110,0,2780,1420
+04_Adversarial_Tampered_AI.pdf,Adversarial AI + Zero-Width,100,100.0,TAMPER_ALERT+T3,TAMPER_ALERT+T3,1.1290,0.9930,12,2780,1240
+05_High_Overlap_Twin_Document.pdf,Institutional Twin Thesis,0,0.0,T0_HUMAN,T0_HUMAN,0.9840,1.0390,0,2780,1190
+1125_2884_UEC006.pdf,LNMIIT Holdout Thesis,>90,94.5,T0_HUMAN,T0_HUMAN,0.9870,1.0340,0,2780,1310
+1380_15UCC042.pdf,LNMIIT Holdout Thesis,>85,91.8,T0_HUMAN,T0_HUMAN,0.9890,1.0280,0,2780,1350
+1383_15UCS039.pdf,LNMIIT Holdout Thesis,>90,96.2,T0_HUMAN,T0_HUMAN,0.9830,1.0410,0,2780,1290
+1401_15uec053.pdf,LNMIIT Holdout Thesis,>85,89.4,T0_HUMAN,T0_HUMAN,0.9910,1.0250,0,2780,1380
+1509_16ucs001.pdf,LNMIIT Holdout Thesis,>90,97.1,T0_HUMAN,T0_HUMAN,0.9850,1.0370,0,2780,1270
