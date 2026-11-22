@@ -16,3 +16,5 @@ test_pdfs/
 *.coverage
 .pytest_cache/
 *.pdf
+!test_documents/*.pdf
+!test_documents/**/*.pdf
