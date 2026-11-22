@@ -8,11 +8,11 @@ __pycache__/
 *.py[cod]
 venv/
 
-# Uploads
-/uploads/
+# Uploads (runtime storage)
+/uploads/*
+!/uploads/.gitkeep
 
-# Test artifacts
-test_pdfs/
+# Test artifacts & generated caches
 *.coverage
 .pytest_cache/
 *.pdf
