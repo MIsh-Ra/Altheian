@@ -28,7 +28,7 @@ import MatchCard from '../components/report/MatchCard';
 import PieChart from '../components/report/PieChart';
 import BarChart from '../components/report/BarChart';
 import ExportMenu from '../components/report/ExportMenu';
-import AIDetectionView from '../components/report/AIDetectionView';
+import AIDetectionView, { getTierDetails } from '../components/report/AIDetectionView';
 import { useReportStore } from '../stores/reportStore';
 
 export default function ReportView() {
@@ -266,30 +266,38 @@ export default function ReportView() {
                             </div>
 
                             {/* AI Authorship Card */}
-                            <div className="p-5 rounded border border-ghost bg-surface-container-lowest space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs text-on-surface-variant font-medium">AI detection verdict</span>
-                                    <span className="text-[10px] font-medium px-2 py-0.5 rounded border bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
-                                        {aiDetectionResult?.verdict?.split('_')[0] || 'Tier 0'} · Human
-                                    </span>
-                                </div>
-                                <div className="flex items-baseline space-x-1.5">
-                                    <span className="text-4xl font-semibold tracking-tight text-on-surface tabular-nums">
-                                        {aiDetectionResult?.ai_probability != null ? Math.round(aiDetectionResult.ai_probability * 100) : 0}
-                                    </span>
-                                    <span className="text-sm font-mono text-on-surface-variant">% AI</span>
-                                </div>
-                                <p className="text-xs text-on-surface-variant leading-relaxed">
-                                    Sentence structures and word flow are consistent with authentic human writing. No automated generation detected.
-                                </p>
-                                <button
-                                    onClick={() => setActiveTab && setActiveTab('ai_detection')}
-                                    className="inline-flex items-center space-x-1.5 text-xs text-secondary hover:underline pt-1"
-                                >
-                                    <span>View AI authorship analysis</span>
-                                    <ArrowRight className="w-3.5 h-3.5" />
-                                </button>
-                            </div>
+                            {(() => {
+                                const aiProbRaw = aiDetectionResult?.overall_ai_prob ?? aiDetectionResult?.ai_probability ?? 0;
+                                const aiPercent = Math.round(aiProbRaw * 100);
+                                const tierInfo = getTierDetails(aiDetectionResult?.verdict);
+
+                                return (
+                                    <div className="p-5 rounded border border-ghost bg-surface-container-lowest space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs text-on-surface-variant font-medium">AI detection verdict</span>
+                                            <span className={`text-[10px] font-medium px-2 py-0.5 rounded border ${tierInfo.badge}`}>
+                                                {tierInfo.shortTitle}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-baseline space-x-1.5">
+                                            <span className="text-4xl font-semibold tracking-tight text-on-surface tabular-nums">
+                                                {aiPercent}
+                                            </span>
+                                            <span className="text-sm font-mono text-on-surface-variant">% AI</span>
+                                        </div>
+                                        <p className="text-xs text-on-surface-variant leading-relaxed">
+                                            {tierInfo.description}
+                                        </p>
+                                        <button
+                                            onClick={() => setActiveTab && setActiveTab('ai_detection')}
+                                            className="inline-flex items-center space-x-1.5 text-xs text-secondary hover:underline pt-1"
+                                        >
+                                            <span>View detailed AI analysis</span>
+                                            <ArrowRight className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                );
+                            })()}
 
                             {/* Document Telemetry Card */}
                             <div className="p-5 rounded border border-ghost bg-surface-container-lowest space-y-3">

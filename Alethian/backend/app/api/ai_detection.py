@@ -31,6 +31,7 @@ def _serialize_ai_result(ai_det: AIDetectionResult) -> dict[str, Any]:
         "verdict_label": tier_labels.get(ai_det.verdict, ai_det.verdict),
         "confidence_score": ai_det.confidence_score,
         "overall_ai_prob": ai_det.overall_ai_prob,
+        "ai_probability": ai_det.overall_ai_prob,
         "binoculars_ratio": ai_det.binoculars_ratio,
         "dna_detect_score": ai_det.dna_detect_score,
         "irm_divergence": ai_det.irm_divergence,
@@ -51,6 +52,7 @@ def _serialize_ai_result(ai_det: AIDetectionResult) -> dict[str, Any]:
                 "binoculars_score": w.binoculars_score,
                 "dna_score": w.dna_score,
                 "risk_level": w.risk_level,
+                "ai_probability": round(max(0.0, min(1.0, (w.binoculars_score - 0.98) / 0.16)), 4) if w.binoculars_score is not None else 0.0,
                 "excerpt": w.excerpt,
             }
             for w in sorted(ai_det.windows, key=lambda x: x.window_index)
