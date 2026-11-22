@@ -69,8 +69,10 @@ class AIDetectionOrchestrator:
         dna_scorer: DNADetectScorer | None = None,
         escalation_audit: Stage2EscalationAudit | None = None,
         change_point_detector: ChangePointDetector | None = None,
+        model_manager: ModelManager | None = None,
     ) -> None:
-        self.binoculars_scorer = binoculars_scorer or BinocularsScorer()
+        self.model_manager = model_manager or ModelManager.get_instance()
+        self.binoculars_scorer = binoculars_scorer or BinocularsScorer(model_manager=self.model_manager)
         self.dna_scorer = dna_scorer or DNADetectScorer()
         self.escalation_audit = escalation_audit or Stage2EscalationAudit()
         self.change_point_detector = change_point_detector or ChangePointDetector()
@@ -182,28 +184,27 @@ class AIDetectionOrchestrator:
             "Stage 1: Running Falcon-7B Binoculars & DNA-DetectLLM dual-stream...",
         )
 
+        if not self.model_manager._is_loaded:
+            try:
+                logger.info("[%s] Loading neural models on demand...", document_id)
+                self.model_manager.load_models()
+            except Exception as load_err:
+                logger.error("[%s] Failed to load neural models on demand: %s", document_id, load_err)
+
         try:
             bino_res = self.binoculars_scorer.score_text(cleaned_text)
             bino_score = float(bino_res.binoculars_score)
             window_scores = bino_res.window_scores or [bino_score]
-        except Exception as e:  # noqa: BLE001
-            logger.warning(
-                "[%s] Binoculars scoring fallback to mock/neutral: %s",
-                document_id,
-                e,
-            )
-            bino_score = 0.92  # Default neutral human score if model unavailable
+        except Exception as e:
+            logger.exception("[%s] Binoculars scoring encountered an error: %s", document_id, e)
+            bino_score = 0.92
             window_scores = [bino_score]
 
         try:
             dna_res = self.dna_scorer.score_text(cleaned_text)
             dna_score = float(dna_res.template_divergence_ratio)
-        except Exception as e:  # noqa: BLE001
-            logger.warning(
-                "[%s] DNA-DetectLLM scoring fallback to mock/neutral: %s",
-                document_id,
-                e,
-            )
+        except Exception as e:
+            logger.exception("[%s] DNA-DetectLLM scoring encountered an error: %s", document_id, e)
             dna_score = 0.85
 
         # -------------------------------------------------------------

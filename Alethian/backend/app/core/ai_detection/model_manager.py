@@ -38,14 +38,10 @@ class ModelManager:
     _lock: threading.Lock = threading.Lock()
 
     def __init__(self) -> None:
-        self.observer_name: str = "tiiuae/falcon-7b"
-        self.performer_name: str = "tiiuae/falcon-7b-instruct"
+        self.observer_name: str = "Qwen/Qwen2.5-0.5B"
+        self.performer_name: str = "Qwen/Qwen2.5-0.5B-Instruct"
         self.observer_device: str = "cuda:0" if torch.cuda.is_available() else "cpu"
-        self.performer_device: str = (
-            "cuda:1"
-            if torch.cuda.device_count() > 1
-            else ("cuda:0" if torch.cuda.is_available() else "cpu")
-        )
+        self.performer_device: str = "cuda:0" if torch.cuda.is_available() else "cpu"
         self.observer_model: Any | None = None
         self.performer_model: Any | None = None
         self.tokenizer: Any | None = None
@@ -62,10 +58,10 @@ class ModelManager:
 
     def load_models(
         self,
-        observer_name: str = "tiiuae/falcon-7b",
-        performer_name: str = "tiiuae/falcon-7b-instruct",
-        observer_device: str = "cuda:0",
-        performer_device: str = "cuda:1",
+        observer_name: str = "Qwen/Qwen2.5-0.5B",
+        performer_name: str = "Qwen/Qwen2.5-0.5B-Instruct",
+        observer_device: str | None = None,
+        performer_device: str | None = None,
     ) -> ModelManager:
         """
         Loads the observer and performer causal LLMs with:
@@ -79,6 +75,11 @@ class ModelManager:
             raise RuntimeError(
                 "transformers is required to load causal language models."
             )
+
+        if observer_device is None:
+            observer_device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        if performer_device is None:
+            performer_device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
         self.observer_name = observer_name
         self.performer_name = performer_name
