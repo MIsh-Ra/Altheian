@@ -11,17 +11,13 @@ from celery import Celery
 
 redis_url = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1")
 
-celery_app = Celery(
-    "worker",
-    broker=redis_url,
-    backend=redis_url
-)
+celery_app = Celery("worker", broker=redis_url, backend=redis_url)
 
 celery_app.conf.update(
-    task_serializer='json',
-    accept_content=['json'],
-    result_serializer='json',
-    timezone='UTC',
+    task_serializer="json",
+    accept_content=["json"],
+    result_serializer="json",
+    timezone="UTC",
     enable_utc=True,
 )
 
@@ -53,7 +49,7 @@ def analyze_document(self, document_id: str, file_path: str):
         _status_redis = _redis.Redis(
             host=os.getenv("REDIS_HOST", "localhost"),
             port=int(os.getenv("REDIS_PORT", "6379")),
-            decode_responses=True
+            decode_responses=True,
         )
     except Exception:  # noqa: BLE001
         _status_redis = None
@@ -63,7 +59,9 @@ def analyze_document(self, document_id: str, file_path: str):
             try:
                 _status_redis.publish(
                     f"doc_status:{document_id}",
-                    json.dumps({"stage": stage, "progress": progress, "message": message})
+                    json.dumps(
+                        {"stage": stage, "progress": progress, "message": message}
+                    ),
                 )
             except Exception:  # noqa: BLE001, S110
                 pass
@@ -75,7 +73,7 @@ def analyze_document(self, document_id: str, file_path: str):
 
         # --- File Size Check ---
         file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
-        if file_size_mb > getattr(settings, 'MAX_UPLOAD_SIZE_MB', 100):
+        if file_size_mb > getattr(settings, "MAX_UPLOAD_SIZE_MB", 100):
             doc.status = DocumentStatus.failed
             db.commit()
             return {"error": f"File too large: {file_size_mb:.1f}MB"}
@@ -88,12 +86,16 @@ def analyze_document(self, document_id: str, file_path: str):
 
         parsed = extract_text_from_pdf(file_path, grobid_url=settings.GROBID_URL)
         text = parsed.get("body_text", "").replace("\x00", "")
-        page_texts = parsed.get("page_texts", [])        # [{page, text, char_start, char_end}]
+        page_texts = parsed.get(
+            "page_texts", []
+        )  # [{page, text, char_start, char_end}]
         if page_texts:
             for pt in page_texts:
                 if isinstance(pt, dict) and "text" in pt:
                     pt["text"] = str(pt["text"]).replace("\x00", "")
-        page_boundaries = parsed.get("page_boundaries", [])  # [(char_start, char_end, page_num)]
+        page_boundaries = parsed.get(
+            "page_boundaries", []
+        )  # [(char_start, char_end, page_num)]
 
         doc.title = str(parsed.get("title", doc.title)).replace("\x00", "")[:250]
         doc.page_count = parsed.get("page_count", 1)
@@ -104,35 +106,59 @@ def analyze_document(self, document_id: str, file_path: str):
             db.commit()
             return {"error": "No text could be extracted from this PDF."}
 
-        logger.info(f"[{document_id}] Extracted via {parsed.get('extraction_method')} "
-                    f"({len(text)} chars, {doc.page_count} pages, {len(page_texts)} page_texts)")
+        logger.info(
+            f"[{document_id}] Extracted via {parsed.get('extraction_method')} "
+            f"({len(text)} chars, {doc.page_count} pages, {len(page_texts)} page_texts)"
+        )
 
         doc.content = text
         doc.page_texts = page_texts  # persist page-indexed text
         db.commit()
 
+        # --- Trigger Parallel AI Detection Pipeline ---
+        try:
+            celery_app.send_task(
+                "detect_ai_task", args=[document_id], queue="ai_detection"
+            )
+            logger.info(f"[{document_id}] Dispatched parallel AI detection task")
+        except Exception as ai_dispatch_err:  # noqa: BLE001
+            logger.warning(
+                f"[{document_id}] Failed to dispatch AI detection task: {ai_dispatch_err}"
+            )
+
         # --- Stage 1.5: Index for future comparisons ---
         logger.info(f"[{document_id}] Stage: indexing")
         broadcast_status("indexing", 25, "Indexing document into archive...")
-        index_document(document_id, text, title=doc.title,
-                       page_boundaries=page_boundaries, page_count=doc.page_count or 1)
+        index_document(
+            document_id,
+            text,
+            title=doc.title,
+            page_boundaries=page_boundaries,
+            page_count=doc.page_count or 1,
+        )
 
         # --- Stage 2: Internal Similarity ---
         logger.info(f"[{document_id}] Stage: internal_similarity")
-        broadcast_status("internal_similarity", 40, "Comparing against internal archive...")
+        broadcast_status(
+            "internal_similarity", 40, "Comparing against internal archive..."
+        )
         internal_matches = run_similarity(
-            document_id, text, db,
+            document_id,
+            text,
+            db,
             page_boundaries=page_boundaries,
-            page_count=doc.page_count or 1
+            page_count=doc.page_count or 1,
         )
 
         # --- Stage 3: Web Dragnet ---
         logger.info(f"[{document_id}] Stage: web_dragnet")
         broadcast_status("web_dragnet", 60, "Searching web sources...")
         web_matches = run_dragnet(
-            document_id, text, internal_matches,
+            document_id,
+            text,
+            internal_matches,
             page_boundaries=page_boundaries,
-            page_count=doc.page_count or 1
+            page_count=doc.page_count or 1,
         )
 
         # --- Stage 4: Report Generation ---
@@ -148,13 +174,13 @@ def analyze_document(self, document_id: str, file_path: str):
             document_id=doc.id,
             score=score,
             risk_level=risk,
-            doc_word_count=doc_word_count
+            doc_word_count=doc_word_count,
         )
         db.add(report)
         db.flush()
 
         # --- Persist Sources with computed coverage stats ---
-        source_map = {}     # key -> source_id
+        source_map = {}  # key -> source_id
         source_matches = {}  # key -> [match dicts]
 
         for m in all_raw_matches:
@@ -185,7 +211,9 @@ def analyze_document(self, document_id: str, file_path: str):
             src_obj.match_count = len(ms)
             src_obj.pages_affected = sorted({m.get("submitted_page", 1) for m in ms})
             # coverage = sum of matched words / total doc words
-            total_matched_words = sum(len(m.get("submitted_text", "").split()) for m in ms)
+            total_matched_words = sum(
+                len(m.get("submitted_text", "").split()) for m in ms
+            )
             src_obj.coverage_percent = round(
                 min(100.0, (total_matched_words / max(1, doc_word_count)) * 100), 2
             )
@@ -204,12 +232,17 @@ def analyze_document(self, document_id: str, file_path: str):
                 submitted_start_char=m.get("submitted_start_char", 0),
                 submitted_end_char=m.get("submitted_end_char", 0),
                 similarity=m.get("similarity_score", m.get("score", 0.0) * 100),
-                match_length_words=len(m.get("submitted_text", "").split())
+                match_length_words=len(m.get("submitted_text", "").split()),
             )
             db.add(match_record)
 
         # --- Generate & Persist Heatmap ---
-        heatmap = generate_heatmap(all_raw_matches, doc.page_count, doc_word_count=doc_word_count, page_texts=page_texts)
+        heatmap = generate_heatmap(
+            all_raw_matches,
+            doc.page_count,
+            doc_word_count=doc_word_count,
+            page_texts=page_texts,
+        )
         for h in heatmap:
             hp = HeatmapPage(
                 report_id=report.id,
@@ -219,7 +252,7 @@ def analyze_document(self, document_id: str, file_path: str):
                 web_density=h.get("web_density", 0.0),
                 color=h.get("color", "#22c55e"),
                 match_count=h.get("match_count", 0),
-                dominant_type=h.get("dominant_type", "clean")
+                dominant_type=h.get("dominant_type", "clean"),
             )
             db.add(hp)
 
@@ -245,13 +278,18 @@ def analyze_document(self, document_id: str, file_path: str):
         try:
             from app.core.similarity import _get_qdrant
             from qdrant_client.models import FieldCondition, Filter, MatchValue
+
             qdrant = _get_qdrant()
             if qdrant:
                 qdrant.client.delete(
                     collection_name=qdrant.collection_name,
                     points_selector=Filter(
-                        must=[FieldCondition(key="document_id", match=MatchValue(value=document_id))]
-                    )
+                        must=[
+                            FieldCondition(
+                                key="document_id", match=MatchValue(value=document_id)
+                            )
+                        ]
+                    ),
                 )
         except Exception as delete_ex:  # noqa: BLE001
             logger.error(f"Failed to rollback Qdrant changes: {delete_ex}")

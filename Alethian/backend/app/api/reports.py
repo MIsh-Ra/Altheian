@@ -1,18 +1,31 @@
-from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy.orm import Session
-from typing import Optional, List
-import uuid
-import io
 import datetime
+import io
+from typing import Annotated
 
-from app.db.session import get_db
-from app.db.models import Report, Match, Document, HeatmapPage, Source
-from app.schemas.report import FullReportResponse, HeatmapPageResponse, ReportReviewRequest
-from app.schemas.match import MatchExcludeRequest, MatchCommentRequest
 from app.core.report_engine import (
-    recalculate_after_exclusion, build_summary_stats, generate_source_breakdown,
-    generate_heatmap, generate_page_distribution, calculate_contributions
+    build_summary_stats,
+    calculate_contributions,
+    generate_page_distribution,
+    generate_source_breakdown,
+    recalculate_after_exclusion,
 )
+from app.db.models import (
+    AIDetectionResult,
+    Document,
+    Match,
+    Report,
+    Source,
+)
+from app.db.session import get_db
+from app.schemas.ai_detection import AIDetectionResponse
+from app.schemas.match import MatchCommentRequest, MatchExcludeRequest
+from app.schemas.report import (
+    FullReportResponse,
+    HeatmapPageResponse,
+    ReportReviewRequest,
+)
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 
@@ -129,6 +142,13 @@ def _build_report_data(document_id: str, db: Session) -> dict:
             } if m.source else None,
         })
 
+    # AI Detection result if available
+    ai_det = db.query(AIDetectionResult).filter(AIDetectionResult.document_id == document_id).first()
+    ai_detection_serialized = None
+    if ai_det:
+        from app.api.ai_detection import _serialize_ai_result
+        ai_detection_serialized = _serialize_ai_result(ai_det)
+
     return {
         "document_id": document_id,
         "document_title": doc.title,
@@ -158,6 +178,7 @@ def _build_report_data(document_id: str, db: Session) -> dict:
             "faculty_notes": report.faculty_notes,
             "verdict": report.verdict,
         },
+        "ai_detection": ai_detection_serialized,
     }
 
 
@@ -177,7 +198,34 @@ def get_report(document_id: str, db: Session = Depends(get_db),
     return _build_report_data(document_id, db)
 
 
-@router.get("/{document_id}/heatmap", response_model=List[HeatmapPageResponse])
+@router.get("/{document_id}/ai-detection", response_model=AIDetectionResponse)
+def get_report_ai_detection(
+    document_id: str,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    doc = (
+        db.query(Document)
+        .filter(Document.id == document_id, Document.user_id == current_user.id)
+        .first()
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    ai_det = (
+        db.query(AIDetectionResult)
+        .filter(AIDetectionResult.document_id == document_id)
+        .first()
+    )
+    if not ai_det:
+        raise HTTPException(
+            status_code=404, detail="AI detection analysis is pending or has not been run"
+        )
+    from app.api.ai_detection import _serialize_ai_result
+
+    return _serialize_ai_result(ai_det)
+
+
+@router.get("/{document_id}/heatmap", response_model=list[HeatmapPageResponse])
 def get_heatmap(document_id: str, db: Session = Depends(get_db),
                 current_user: User = Depends(get_current_user)):
     report = db.query(Report).join(Document).filter(
@@ -258,7 +306,7 @@ def review_document(document_id: str, req: ReportReviewRequest,
     report.faculty_notes = req.faculty_notes
     report.digital_signature = req.digital_signature
     report.status = "reviewed"
-    report.reviewed_at = datetime.datetime.now(datetime.timezone.utc)
+    report.reviewed_at = datetime.datetime.now(datetime.UTC)
     db.commit()
     return {"status": "success", "message": "Document marked as reviewed"}
 
@@ -297,16 +345,23 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
     Pages 3+: Match Details (2-3 per page)
     Last Page: Footer hash
     """
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import mm
-    from reportlab.lib import colors
-    from reportlab.platypus import (
-        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-        PageBreak, HRFlowable, KeepTogether
-    )
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
     import hashlib
+
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import (
+        HRFlowable,
+        KeepTogether,
+        PageBreak,
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
 
     buffer = io.BytesIO()
     PAGE_W, PAGE_H = A4
@@ -658,7 +713,7 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
     story.append(HRFlowable(width="100%", thickness=1, color=GREY))
     story.append(Spacer(1, 4 * mm))
     footer_text = [
-        f"Generated by Alethian v2.0 — Local-First Plagiarism Detection System",
+        "Generated by Alethian v2.0 — Local-First Plagiarism Detection System",
         f"Report generated: {now.strftime('%Y-%m-%d %H:%M UTC')}",
         f"Document ID: {report_data.get('document_id', '—')}",
         f"Integrity token: {report_hash}",
