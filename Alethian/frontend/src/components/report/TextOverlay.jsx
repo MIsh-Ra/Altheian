@@ -36,7 +36,6 @@ function buildHighlightedSegments(text, matches, charOffset, onSelectMatch) {
         return [<span key="all">{text}</span>];
     }
 
-    // Spec colours: Red=exact, Orange=paraphrase, Blue=web (Report_Design_v2 §3.1)
     const getHighlightStyle = (type) => {
         switch (type) {
             case 'internal_exact':
@@ -44,7 +43,7 @@ function buildHighlightedSegments(text, matches, charOffset, onSelectMatch) {
             case 'internal_paraphrase':
                 return { background: 'rgba(249,115,22,0.20)', borderBottom: '2px solid #f97316' };
             case 'web':
-                return { background: 'rgba(59,130,246,0.18)', borderBottom: '2px solid #3b82f6' };
+                return { background: 'rgba(59,130,246,0.20)', borderBottom: '2px solid #3b82f6' };
             default:
                 return { background: 'rgba(100,100,100,0.15)' };
         }
@@ -59,11 +58,19 @@ function buildHighlightedSegments(text, matches, charOffset, onSelectMatch) {
                 <span key={`txt-${cursor}`}>{text.slice(cursor, match.start)}</span>
             );
         }
+
+        const typeLabel = match.type === 'web' 
+            ? 'Online web source' 
+            : match.type === 'internal_exact' 
+                ? 'University archive' 
+                : 'Paraphrased content';
+        const tooltip = `${typeLabel} · ${Math.round(match.sim)}% similarity · Click to inspect match`;
+
         segments.push(
             <mark
                 key={`hl-${match.id}-${match.start}`}
                 style={getHighlightStyle(match.type)}
-                title={`${match.type.replace(/_/g, ' ')} — ${Math.round(match.sim)}% similarity`}
+                title={tooltip}
                 className={`cursor-pointer rounded-[2px] px-[1px] transition-opacity hover:opacity-80 ${match.type === 'internal_exact' ? 'bg-error-container/30' : ''}`}
                 onClick={() => onSelectMatch?.(match.id)}
             >
@@ -159,9 +166,37 @@ export default function TextOverlay({ pageTexts, documentText, text, matches }) 
     }
 
     const activeMatches = (matches || []).filter(m => !m.is_excluded);
+    const webMatchCount = activeMatches.filter(m => m.type === 'web').length;
+    const instMatchCount = activeMatches.filter(m => m.type === 'internal_exact').length;
+    const paraMatchCount = activeMatches.filter(m => m.type === 'internal_paraphrase').length;
 
     return (
-        <div ref={containerRef} className="h-full overflow-y-auto">
+        <div ref={containerRef} className="h-full overflow-y-auto relative">
+            {/* Pinned Highlight Legend Bar */}
+            <div className="sticky top-0 z-20 bg-surface-container-low/95 backdrop-blur-xs border-b border-ghost px-5 py-2 flex items-center justify-between text-xs select-none">
+                <div className="flex items-center space-x-4">
+                    <span className="text-[11px] font-medium text-on-surface-variant">Underline key:</span>
+                    <div className="flex items-center space-x-1.5" title="Matches found in public web pages, articles, and documentation">
+                        <span className="w-2.5 h-1 bg-blue-500 rounded-full"></span>
+                        <span className="text-on-surface font-medium text-xs">Online web</span>
+                        <span className="text-[10px] font-mono tabular-nums text-on-surface-variant">({webMatchCount})</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5" title="Matches found in university repositories and past student theses">
+                        <span className="w-2.5 h-1 bg-red-500 rounded-full"></span>
+                        <span className="text-on-surface font-medium text-xs">University theses</span>
+                        <span className="text-[10px] font-mono tabular-nums text-on-surface-variant">({instMatchCount})</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5" title="Matches with paraphrased phrasing or altered sentence structure">
+                        <span className="w-2.5 h-1 bg-orange-500 rounded-full"></span>
+                        <span className="text-on-surface font-medium text-xs">Paraphrased</span>
+                        <span className="text-[10px] font-mono tabular-nums text-on-surface-variant">({paraMatchCount})</span>
+                    </div>
+                </div>
+                <span className="text-[10px] text-on-surface-variant hidden sm:inline">
+                    Click underlined text to view comparison
+                </span>
+            </div>
+
             {pages.map((pg) => {
                 const pageNum = pg.page;
                 const isActive = pageNum === currentPage;
