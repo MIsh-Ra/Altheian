@@ -142,8 +142,8 @@ export default function ReportView() {
     return (
         <div className="flex flex-col h-full bg-surface overflow-hidden print:h-auto print:overflow-visible print:block" id="alethian-report-container">
             {/* Header Toolbar */}
-            <header className="flex-none bg-surface-container-low border-b border-ghost px-5 py-3 flex items-center justify-between z-10 print:hidden select-none">
-                <div className="flex items-center space-x-3">
+            <header className="flex-none bg-surface-container-low border-b border-ghost px-5 py-3 flex items-center justify-between z-10 print:hidden select-none min-w-0">
+                <div className="flex items-center space-x-3 flex-shrink-0">
                     <button 
                         aria-label="Return to Dashboard" 
                         onClick={() => navigate('/dashboard')} 
@@ -151,14 +151,14 @@ export default function ReportView() {
                     >
                         <ChevronLeft className="w-5 h-5" />
                     </button>
-                    <div className="flex items-baseline space-x-2.5">
+                    <div className="flex items-baseline space-x-2.5 whitespace-nowrap">
                         <h1 className="text-sm font-semibold text-on-surface">Forensic audit report</h1>
                         <span className="text-[10px] text-on-surface-variant font-mono tabular-nums">#{id.substring(0, 8)}</span>
                     </div>
                 </div>
 
                 {/* 4 Clean Dedicated Navigation Tabs */}
-                <div className="flex items-center rounded bg-surface-container p-0.5 border border-ghost">
+                <div className="flex items-center rounded bg-surface-container p-0.5 border border-ghost flex-shrink-0 whitespace-nowrap">
                     <button
                         onClick={() => setActiveTab && setActiveTab('plagiarism')}
                         className={`flex items-center space-x-1.5 px-3 py-1 text-xs rounded font-medium transition-colors ${
@@ -484,9 +484,9 @@ export default function ReportView() {
                 </div>
             ) : (
                 /* Spacious, Uncluttered 2-Column Plagiarism Inspector */
-                <div className="flex flex-1 overflow-hidden p-4 space-x-4 print:p-0 print:space-x-0 print:block">
+                <div className="flex flex-1 min-w-0 overflow-hidden p-4 space-x-4 print:p-0 print:space-x-0 print:block">
                     {/* Main Document Inspector Area (Fluid, Spacious) */}
-                    <main className="flex-1 bg-surface border border-ghost rounded flex flex-col overflow-hidden relative print:border-none print:rounded-none print:block print:overflow-visible print:h-auto">
+                    <main className="flex-1 min-w-0 bg-surface border border-ghost rounded flex flex-col overflow-hidden relative print:border-none print:rounded-none print:block print:overflow-visible print:h-auto">
                         <div className="flex-1 overflow-hidden relative print:overflow-visible print:h-auto print:block">
                             <TextOverlay
                                 pageTexts={report.page_texts || []}
@@ -496,8 +496,8 @@ export default function ReportView() {
                         </div>
                     </main>
 
-                    {/* Right Inspector Sidebar (360px) */}
-                    <aside className="w-92 bg-surface-container-lowest border border-ghost rounded flex flex-col overflow-hidden flex-none print:hidden">
+                    {/* Right Inspector Sidebar (384px) */}
+                    <aside className="w-80 sm:w-96 max-w-sm bg-surface-container-lowest border border-ghost rounded flex flex-col overflow-hidden flex-none print:hidden">
                         <div className="p-3 border-b border-ghost bg-surface-container-low">
                             <FilterBar />
                         </div>

@@ -90,7 +90,7 @@ export default function GlobalLayout({ children }) {
             </aside>
 
             {/* Main Fluid Content Stage */}
-            <main className="flex-1 bg-surface overflow-auto relative print:h-auto print:overflow-visible print:block">
+            <main className="flex-1 min-w-0 bg-surface overflow-auto relative print:h-auto print:overflow-visible print:block">
                 {children}
             </main>
         </div>
