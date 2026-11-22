@@ -30,6 +30,19 @@ celery_ai_app.conf.update(
 )
 
 
+from celery.signals import worker_ready
+
+@worker_ready.connect
+def on_worker_ready(**kwargs):
+    logger.info("AI Worker ready. Preloading zero-shot neural models into GPU memory...")
+    try:
+        from app.core.ai_detection.model_manager import ModelManager
+        ModelManager.get_instance().load_models()
+        logger.info("Zero-shot neural models successfully pinned in GPU memory.")
+    except Exception as e:
+        logger.error(f"Failed to preload models on worker ready: {e}")
+
+
 @celery_ai_app.task(bind=True, name="detect_ai_task")
 def detect_ai_task(self, document_id: str):
     """
@@ -37,9 +50,10 @@ def detect_ai_task(self, document_id: str):
     Must be run with --pool=solo on GPU workers:
         celery -A celery_ai_worker.celery_ai_app worker -Q ai_detection,ai_escalation --pool=solo --loglevel=info
     """
-    from app.core.ai_detection.orchestrator import AIDetectionOrchestrator
-    from app.db.models import Document
     from app.db.session import SessionLocal
+    from app.db.models import Document
+    from app.core.ai_detection.model_manager import ModelManager
+    from app.core.ai_detection.orchestrator import AIDetectionOrchestrator
 
     db = SessionLocal()
     try:
@@ -50,7 +64,12 @@ def detect_ai_task(self, document_id: str):
             )
             return {"status": "skipped", "reason": "no content"}
 
-        orchestrator = AIDetectionOrchestrator()
+        mm = ModelManager.get_instance()
+        if not mm._is_loaded:
+            logger.info(f"[{document_id}] ModelManager not yet loaded. Initializing...")
+            mm.load_models()
+
+        orchestrator = AIDetectionOrchestrator(model_manager=mm)
         result = orchestrator.analyze(
             document_id=document_id,
             text=doc.content,

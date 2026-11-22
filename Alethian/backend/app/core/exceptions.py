@@ -19,13 +19,15 @@ async def alethian_exception_handler(request: Request, exc: AlethianException):
         }
     )
 
+from fastapi.encoders import jsonable_encoder
+
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
             "detail": "Input validation failed",
             "error_code": "VALIDATION_ERROR",
-            "errors": exc.errors(),
+            "errors": jsonable_encoder(exc.errors()),
             "timestamp": datetime.utcnow().isoformat()
         }
     )
