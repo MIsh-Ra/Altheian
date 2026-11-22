@@ -38,10 +38,29 @@ describe('AIDetectionView Component', () => {
         render(<AIDetectionView documentText="Paragraph 1\n\nParagraph 2" />);
 
         expect(screen.getByText('94%')).toBeInTheDocument();
-        expect(screen.getByText('Tier 3')).toBeInTheDocument();
-        expect(screen.getByText('Window #0')).toBeInTheDocument();
-        expect(screen.getByText('Window #1')).toBeInTheDocument();
+        expect(screen.getByText(/Tier 3/i)).toBeInTheDocument();
+        expect(screen.getByText(/Section #\s*0/i)).toBeInTheDocument();
+        expect(screen.getByText(/Section #\s*1/i)).toBeInTheDocument();
         expect(screen.getByText('0.7251')).toBeInTheDocument();
+    });
+
+    it('renders correctly when aiResult is passed as a prop', () => {
+        const propResult = {
+            verdict: 'T2_ELEVATED',
+            ai_probability: 0.58,
+            confidence_interval: [0.50, 0.65],
+            tamper_detected: false,
+            windows: [
+                { window_index: 0, ai_probability: 0.58, binoculars_score: 1.03, dna_score: 0.6, text: 'Prop text' }
+            ],
+            paragraph_risks: []
+        };
+
+        render(<AIDetectionView aiResult={propResult} documentText="Some test text" />);
+
+        expect(screen.getByText('58%')).toBeInTheDocument();
+        expect(screen.getByText(/Tier 2/i)).toBeInTheDocument();
+        expect(screen.getByText(/Section #\s*0/i)).toBeInTheDocument();
     });
 
     it('renders adversarial tampering banner when tamper_detected is true', () => {

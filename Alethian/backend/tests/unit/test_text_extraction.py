@@ -17,7 +17,17 @@ def test_text_extraction_fallback_to_ocr():
             mock_pypdf.return_value = None
             
             # 3. Simulate Tesseract succeeding
-            mock_ocr.return_value = "This is the magically recovered OCR text."
+            mock_ocr.return_value = {
+                "body_text": "This is the magically recovered OCR text.",
+                "title": "Unknown Title (OCR)",
+                "page_count": 1,
+                "page_texts": [],
+                "page_boundaries": [],
+                "sections": [],
+                "references": [],
+                "extraction_method": "tesseract_ocr",
+                "confidence": 0.4,
+            }
             
             # Build mock paths
             result = extract_text_from_pdf("dummy.pdf", b"dummy")

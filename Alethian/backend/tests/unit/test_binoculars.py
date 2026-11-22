@@ -293,16 +293,16 @@ def test_sliding_window_context_chunker():
 
 def test_evidentiary_tier_classification():
     """
-    Asserts:
-    score >= 0.9015 -> 'T0_HUMAN'
-    0.8536 <= score < 0.9015 -> 'T1_INDETERMINATE'
-    score < 0.8536 -> 'ESCALATE'
+    Asserts calibrated for Qwen2.5:
+    score < 1.01 -> 'T0_HUMAN'
+    1.01 <= score < 1.07 -> 'T1_INDETERMINATE'
+    score >= 1.07 -> 'ESCALATE'
     """
     assert classify_evidentiary_tier(0.9500) == "T0_HUMAN"
-    assert classify_evidentiary_tier(0.9015) == "T0_HUMAN"
-    assert classify_evidentiary_tier(0.90149) == "T1_INDETERMINATE"
-    assert classify_evidentiary_tier(0.8750) == "T1_INDETERMINATE"
-    assert classify_evidentiary_tier(0.8536) == "T1_INDETERMINATE"
-    assert classify_evidentiary_tier(0.85359) == "ESCALATE"
-    assert classify_evidentiary_tier(0.8000) == "ESCALATE"
-    assert classify_evidentiary_tier(0.5000) == "ESCALATE"
+    assert classify_evidentiary_tier(1.009) == "T0_HUMAN"
+    assert classify_evidentiary_tier(1.010) == "T1_INDETERMINATE"
+    assert classify_evidentiary_tier(1.045) == "T1_INDETERMINATE"
+    assert classify_evidentiary_tier(1.069) == "T1_INDETERMINATE"
+    assert classify_evidentiary_tier(1.070) == "ESCALATE"
+    assert classify_evidentiary_tier(1.150) == "ESCALATE"
+    assert classify_evidentiary_tier(1.266) == "ESCALATE"
