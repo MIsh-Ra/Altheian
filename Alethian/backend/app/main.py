@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from app.api import admin, auth, documents, reports
+from app.api import admin, ai_detection, auth, documents, reports
 from app.core.exceptions import (
     AlethianException,
     alethian_exception_handler,
@@ -43,13 +43,14 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
 app.include_router(documents.router, prefix="/api/v1/documents", tags=["Documents"])
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
+app.include_router(ai_detection.router, prefix="/api/v1/ai-detection", tags=["AI Detection"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 
 from pathlib import Path
 
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from fastapi import HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 _frontend_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 if _frontend_dist.exists():
