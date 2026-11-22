@@ -28,6 +28,26 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def get_optimal_gpu_device() -> str:
+    """
+    Selects the CUDA device with the greatest amount of available free VRAM,
+    guaranteeing jobs avoid saturated GPUs in shared multi-GPU DGX clusters.
+    """
+    if not torch.cuda.is_available():
+        return "cpu"
+    try:
+        best_device = 0
+        max_free = 0
+        for i in range(torch.cuda.device_count()):
+            free, _ = torch.cuda.mem_get_info(i)
+            if free > max_free:
+                max_free = free
+                best_device = i
+        return f"cuda:{best_device}"
+    except Exception:
+        return "cuda:0" if torch.cuda.is_available() else "cpu"
+
+
 class ModelManager:
     """
     Singleton manager for loading, pinning, and accessing observer and performer
@@ -40,8 +60,9 @@ class ModelManager:
     def __init__(self) -> None:
         self.observer_name: str = "Qwen/Qwen2.5-0.5B"
         self.performer_name: str = "Qwen/Qwen2.5-0.5B-Instruct"
-        self.observer_device: str = "cuda:0" if torch.cuda.is_available() else "cpu"
-        self.performer_device: str = "cuda:0" if torch.cuda.is_available() else "cpu"
+        optimal_dev = get_optimal_gpu_device()
+        self.observer_device: str = optimal_dev
+        self.performer_device: str = optimal_dev
         self.observer_model: Any | None = None
         self.performer_model: Any | None = None
         self.tokenizer: Any | None = None
@@ -77,9 +98,9 @@ class ModelManager:
             )
 
         if observer_device is None:
-            observer_device = "cuda:0" if torch.cuda.is_available() else "cpu"
+            observer_device = get_optimal_gpu_device()
         if performer_device is None:
-            performer_device = "cuda:0" if torch.cuda.is_available() else "cpu"
+            performer_device = observer_device
 
         self.observer_name = observer_name
         self.performer_name = performer_name
