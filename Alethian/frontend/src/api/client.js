@@ -69,6 +69,10 @@ const Client = {
         exportJson: async (documentId) => {
             const response = await api.get(`/reports/${documentId}/export/json`);
             return response.data;
+        },
+        getAIDetection: async (reportId) => {
+            const response = await api.get(`/reports/${reportId}/ai-detection`);
+            return response.data;
         }
     },
 
