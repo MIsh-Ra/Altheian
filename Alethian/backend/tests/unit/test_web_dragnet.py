@@ -55,7 +55,8 @@ class TestSerperClient:
         assert isinstance(results, list)
         assert len(results) > 0
         # Verify URLs are actual URLs
-        for url in results:
+        for item in results:
+            url = item["url"] if isinstance(item, dict) else item
             assert url.startswith("http")
 
     def test_serper_search_with_mock_flag(self, mock_serper):

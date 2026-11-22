@@ -126,19 +126,19 @@ def test_ai_orchestrator_human_document(sample_human_text: str):
 # ---------------------------------------------------------------------------
 def test_ai_orchestrator_frontier_ai_escalation(sample_human_text: str):
     mock_bino = MagicMock(spec=BinocularsScorer)
-    # Low score triggering escalation (< 0.8536)
+    # High score triggering escalation (>= 1.07 for Qwen2.5)
     mock_bino.score_text.return_value = BinocularsResult(
-        performer_log_ppl=2.85,
-        cross_ppl=3.50,
-        binoculars_score=0.8142,
+        performer_log_ppl=3.85,
+        cross_ppl=3.40,
+        binoculars_score=1.132,
         evidentiary_tier="ESCALATE",
         token_count=180,
-        window_scores=[0.81, 0.80, 0.82],
+        window_scores=[1.12, 1.14, 1.13],
     )
 
     mock_dna = MagicMock(spec=DNADetectScorer)
     mock_dna.score_text.return_value = DNADetectResult(
-        binoculars_score=0.8142,
+        binoculars_score=1.132,
         template_divergence_ratio=0.62,
         composite_score=0.7171,
         evidentiary_tier="ESCALATE",
