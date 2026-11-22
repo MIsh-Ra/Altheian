@@ -52,14 +52,16 @@ export function getTierDetails(verdict) {
     }
 }
 
-export default function AIDetectionView({ documentText, pageTexts }) {
+export default function AIDetectionView({ aiResult, documentText, pageTexts }) {
     const { 
-        aiDetectionResult, 
+        aiDetectionResult: storeAiResult, 
         selectedWindowIndex, 
         setSelectedWindow,
         showTamperDrawer,
         setShowTamperDrawer
     } = useReportStore();
+
+    const aiDetectionResult = aiResult || storeAiResult;
 
     const [activeTab, setActiveTab] = useState('windows'); // 'windows' | 'change_points'
     const [showDiagnostics, setShowDiagnostics] = useState(false);

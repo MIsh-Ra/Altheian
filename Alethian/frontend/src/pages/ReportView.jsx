@@ -78,6 +78,9 @@ export default function ReportView() {
 
     useEffect(() => {
         if (!id) return;
+        if (report?.ai_detection && setAIDetectionResult) {
+            setAIDetectionResult(report.ai_detection);
+        }
         Client.reports.getAIDetection(id)
             .then((data) => {
                 if (data && setAIDetectionResult) setAIDetectionResult(data);
@@ -85,7 +88,7 @@ export default function ReportView() {
             .catch(() => {
                 // Silent fallback if AI detection was not requested or is pending
             });
-    }, [id, setAIDetectionResult]);
+    }, [id, report?.ai_detection, setAIDetectionResult]);
 
     useEffect(() => {
         if (wsStatus?.stage === 'complete') {
@@ -227,7 +230,11 @@ export default function ReportView() {
             {/* View Switching Stage */}
             {activeTab === 'ai_detection' ? (
                 <div className="flex-1 overflow-hidden">
-                    <AIDetectionView documentText={report.document_text} pageTexts={report.page_texts} />
+                    <AIDetectionView 
+                        aiResult={report?.ai_detection || aiDetectionResult}
+                        documentText={report.document_text} 
+                        pageTexts={report.page_texts} 
+                    />
                 </div>
             ) : activeTab === 'overview' ? (
                 /* Executive Summary & Analytics Overview */
@@ -267,9 +274,10 @@ export default function ReportView() {
 
                             {/* AI Authorship Card */}
                             {(() => {
-                                const aiProbRaw = aiDetectionResult?.overall_ai_prob ?? aiDetectionResult?.ai_probability ?? 0;
+                                const currentAi = report?.ai_detection || aiDetectionResult;
+                                const aiProbRaw = currentAi?.overall_ai_prob ?? currentAi?.ai_probability ?? 0;
                                 const aiPercent = Math.round(aiProbRaw * 100);
-                                const tierInfo = getTierDetails(aiDetectionResult?.verdict);
+                                const tierInfo = getTierDetails(currentAi?.verdict);
 
                                 return (
                                     <div className="p-5 rounded border border-ghost bg-surface-container-lowest space-y-3">
