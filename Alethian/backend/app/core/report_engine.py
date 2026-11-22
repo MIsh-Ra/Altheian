@@ -1,7 +1,31 @@
 from typing import List, Dict, Any, Optional
 
 
-def calculate_originality(matches: List[Dict[str, Any]], doc_word_count: int) -> float:
+def _count_substantive_words(text: str) -> int:
+    """
+    Count tokens containing at least one alphanumeric character.
+    If the entire string has no alphabetic characters (e.g. pure TOC dot leaders and page numbers like '. . . . . . . 12'),
+    returns 0 substantive words.
+    """
+    if not text or not any(c.isalpha() for c in text):
+        return 0
+    return sum(1 for w in text.split() if any(c.isalnum() for c in w))
+
+
+def _merge_intervals(intervals: List[tuple]) -> List[tuple]:
+    if not intervals:
+        return []
+    sorted_intervals = sorted(intervals, key=lambda x: x[0])
+    merged = [sorted_intervals[0]]
+    for start, end in sorted_intervals[1:]:
+        if start <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+        else:
+            merged.append((start, end))
+    return merged
+
+
+def calculate_originality(matches: List[Dict[str, Any]], doc_word_count: int, doc_text: Optional[str] = None) -> float:
     if doc_word_count == 0:
         return 100.0
 
@@ -18,37 +42,64 @@ def calculate_originality(matches: List[Dict[str, Any]], doc_word_count: int) ->
         return 100.0
 
     # Merge overlapping ranges to avoid double-counting
-    ranges.sort()
-    merged = [ranges[0]]
-    for start, end in ranges[1:]:
-        if start <= merged[-1][1]:
-            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
-        else:
-            merged.append((start, end))
+    merged = _merge_intervals(ranges)
 
-    # Count total matched characters, then estimate words (~6 chars/word avg)
-    total_matched_chars = sum(end - start for start, end in merged)
-    matched_words = total_matched_chars / 6.0
-    coverage = matched_words / doc_word_count
+    if doc_text:
+        substantive_total = max(1, _count_substantive_words(doc_text))
+        matched_words = sum(_count_substantive_words(doc_text[s:e]) for s, e in merged)
+        coverage = matched_words / substantive_total
+    else:
+        # Count total matched characters, then estimate words (~6 chars/word avg)
+        total_matched_chars = sum(end - start for start, end in merged)
+        matched_words = total_matched_chars / 6.0
+        coverage = matched_words / max(1, doc_word_count)
+
+    # 85% substantive threshold clamp for identical twins
+    if coverage > 0.85:
+        return 0.0
+
     return max(0.0, min(100.0, (1.0 - coverage) * 100.0))
 
 
 def generate_heatmap(matches: List[Dict[str, Any]], page_count: int,
-                     doc_word_count: Optional[int] = None) -> List[Dict[str, Any]]:
+                     doc_word_count: Optional[int] = None,
+                     page_texts: Optional[List[Any]] = None) -> List[Dict[str, Any]]:
     """
     Generates per-page density data for heatmap rendering.
     Returns list of page dicts with both 'density_score' (DB field)
     AND 'match_density' (frontend alias) so both sides work.
+    Merges overlapping match intervals per page to avoid artificially inflated densities.
     """
     from app.core.config import settings
     words_per_page = getattr(settings, 'SHINGLING_WORDS_PER_PAGE', 500)
     if doc_word_count and page_count > 0:
         words_per_page = max(100, doc_word_count // page_count)
 
-    page_data = {}
+    page_data: Dict[int, Dict[str, Any]] = {}
     for i in range(1, max(2, page_count + 1)):
-        page_data[i] = {"internal_words": 0, "web_words": 0,
-                        "total_words": words_per_page, "match_count": 0}
+        page_data[i] = {
+            "internal_intervals": [],
+            "web_intervals": [],
+            "all_intervals": [],
+            "fallback_internal_words": 0,
+            "fallback_web_words": 0,
+            "total_words": words_per_page,
+            "match_count": 0,
+        }
+
+    # Populate actual page word counts if page_texts is provided
+    if page_texts:
+        for idx, pt in enumerate(page_texts):
+            p_num = idx + 1
+            p_text = ""
+            if isinstance(pt, dict):
+                p_num = pt.get("page", idx + 1)
+                p_text = pt.get("text", "")
+            elif isinstance(pt, str):
+                p_text = pt
+            w_count = _count_substantive_words(p_text) or len(p_text.split())
+            if w_count > 0 and p_num in page_data:
+                page_data[p_num]["total_words"] = w_count
 
     for m in matches:
         if m.get('is_excluded'):
@@ -56,16 +107,36 @@ def generate_heatmap(matches: List[Dict[str, Any]], page_count: int,
         page = m.get('submitted_page', 1)
         page = min(max(1, page), max(1, page_count))
 
-        words = len(m.get('submitted_text', '').split())
         if page not in page_data:
-            page_data[page] = {"internal_words": 0, "web_words": 0,
-                                "total_words": words_per_page, "match_count": 0}
+            page_data[page] = {
+                "internal_intervals": [],
+                "web_intervals": [],
+                "all_intervals": [],
+                "fallback_internal_words": 0,
+                "fallback_web_words": 0,
+                "total_words": words_per_page,
+                "match_count": 0,
+            }
 
         page_data[page]["match_count"] += 1
-        if m.get('type') == 'web':
-            page_data[page]["web_words"] += words
+        m_type = m.get('type', 'internal')
+        start = m.get('submitted_start_char')
+        end = m.get('submitted_end_char')
+        text = m.get('submitted_text', '')
+
+        if start is not None and end is not None and end > start:
+            interval = (start, end)
+            page_data[page]["all_intervals"].append(interval)
+            if m_type == 'web':
+                page_data[page]["web_intervals"].append(interval)
+            else:
+                page_data[page]["internal_intervals"].append(interval)
         else:
-            page_data[page]["internal_words"] += words
+            words = len(text.split())
+            if m_type == 'web':
+                page_data[page]["fallback_web_words"] += words
+            else:
+                page_data[page]["fallback_internal_words"] += words
 
     def get_color(density: float) -> str:
         if density == 0:
@@ -82,9 +153,19 @@ def generate_heatmap(matches: List[Dict[str, Any]], page_count: int,
     for p in range(1, max(2, page_count + 1)):
         data = page_data[p]
         total = max(1, data["total_words"])
-        internal_dens = min(1.0, data["internal_words"] / total)
-        web_dens = min(1.0, data["web_words"] / total)
-        total_dens = min(1.0, internal_dens + web_dens)
+
+        # Calculate merged interval word counts
+        merged_all = _merge_intervals(data["all_intervals"])
+        merged_internal = _merge_intervals(data["internal_intervals"])
+        merged_web = _merge_intervals(data["web_intervals"])
+
+        matched_all_words = (sum(e - s for s, e in merged_all) / 6.0) + data["fallback_internal_words"] + data["fallback_web_words"]
+        internal_words = (sum(e - s for s, e in merged_internal) / 6.0) + data["fallback_internal_words"]
+        web_words = (sum(e - s for s, e in merged_web) / 6.0) + data["fallback_web_words"]
+
+        internal_dens = min(1.0, internal_words / total)
+        web_dens = min(1.0, web_words / total)
+        total_dens = min(1.0, matched_all_words / total)
 
         dom = "clean"
         if data["match_count"] > 0:
