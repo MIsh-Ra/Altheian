@@ -1,44 +1,75 @@
 import { useReportStore } from '../../stores/reportStore';
+import { Globe, FileText, X } from 'lucide-react';
 
 export default function SourcePanel({ sources }) {
     const { selectedSourceId, setSelectedSource } = useReportStore();
 
     if (!sources || sources.length === 0) {
-        return <div className="text-xs font-mono tracking-widest text-on-surface-variant italic p-5">NO VECTORS IDENTIFIED.</div>;
+        return (
+            <div className="text-xs font-mono text-on-surface-variant p-5 text-center">
+                No external sources identified
+            </div>
+        );
     }
 
     return (
-        <div className="p-5">
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-on-surface">Source Index</h3>
+        <div className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+                <h3 className="text-xs font-medium text-on-surface">Matched sources</h3>
                 {selectedSourceId && (
-                    <button aria-label="Clear Source Selection" onClick={() => setSelectedSource(null)} className="text-xs font-mono text-secondary hover:text-secondary-fixed transition-colors">CLEAR</button>
+                    <button
+                        aria-label="Clear Source Selection"
+                        onClick={() => setSelectedSource(null)}
+                        className="inline-flex items-center space-x-1 text-xs text-secondary hover:underline"
+                    >
+                        <X className="w-3 h-3" />
+                        <span>Clear filter</span>
+                    </button>
                 )}
             </div>
-            <div className="space-y-4">
-                {sources.map((src, i) => (
-                    <div 
-                        key={src.id}
-                        onClick={() => setSelectedSource(src.id === selectedSourceId ? null : src.id)}
-                        className={`p-4 rounded-none border text-sm cursor-pointer transition-colors border-l-4 ${
-                            selectedSourceId === src.id 
-                            ? 'border-y-ghost border-r-ghost border-l-primary bg-surface-container-high shadow-ambient' 
-                            : 'border-y-ghost border-r-ghost border-l-surface hover:border-l-primary-fixed bg-surface-container hover:bg-surface-container-high'
-                        }`}
-                    >
-                        <div className="flex justify-between items-start mb-2">
-                            <span className="font-mono text-xs font-bold text-on-surface truncate tracking-wider" title={src.title || src.domain}>{String(i+1).padStart(2, '0')} // {src.title || src.domain}</span>
-                            <span className="text-xs font-bold text-on-surface-variant ml-3">{Math.round(src.coverage_percent || 0)}%</span>
+
+            <div className="space-y-2">
+                {sources.map((src, i) => {
+                    const isSelected = selectedSourceId === src.id;
+                    const isWeb = src.type === 'web';
+                    const coverage = Math.round(src.coverage_percent || 0);
+
+                    return (
+                        <div 
+                            key={src.id}
+                            onClick={() => setSelectedSource(isSelected ? null : src.id)}
+                            className={`p-3 rounded border text-xs cursor-pointer transition-colors ${
+                                isSelected 
+                                    ? 'border-secondary bg-surface-container-high shadow-xs' 
+                                    : 'border-ghost bg-surface hover:border-outline/50 hover:bg-surface-container-low'
+                            }`}
+                        >
+                            <div className="flex justify-between items-start mb-1.5">
+                                <span className="font-medium text-on-surface truncate pr-2 flex items-center space-x-1.5" title={src.title || src.domain}>
+                                    {isWeb ? <Globe className="w-3.5 h-3.5 text-on-surface-variant flex-none" /> : <FileText className="w-3.5 h-3.5 text-on-surface-variant flex-none" />}
+                                    <span className="truncate">{src.title || src.domain || 'Source document'}</span>
+                                </span>
+                                <span className="font-mono tabular-nums font-semibold text-on-surface flex-none">
+                                    {coverage}%
+                                </span>
+                            </div>
+
+                            <div className="text-[10px] font-mono text-on-surface-variant mb-2 truncate">
+                                {isWeb ? src.domain : 'Internal repository'}
+                            </div>
+
+                            {/* Quiet progress bar */}
+                            <div className="w-full bg-surface-container-highest h-1 rounded-full overflow-hidden">
+                                <div 
+                                    className="bg-secondary h-full rounded-full transition-all duration-300"
+                                    style={{ width: `${Math.min(100, Math.max(3, coverage))}%` }}
+                                />
+                            </div>
                         </div>
-                        <div className="text-[10px] font-mono uppercase tracking-widest text-on-surface-variant mb-3 truncate">
-                            {src.type === 'web' ? `WEB // ${src.domain}` : `ARCHIVE // INTERNAL DATABASE`}
-                        </div>
-                        <div className="w-full bg-surface-container-highest h-1 rounded-none overflow-hidden relative">
-                            <div className="absolute top-0 left-0 bottom-0 bg-primary h-full" style={{ width: `${Math.min(100, Math.max(2, src.coverage_percent || 0))}%` }}></div>
-                        </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );
 }
+
