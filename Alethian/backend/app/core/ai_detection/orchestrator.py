@@ -100,8 +100,8 @@ class AIDetectionOrchestrator:
                 **(extra or {}),
             }
             r.publish(f"ai_status:{document_id}", json.dumps(payload))
-            # Set key with short TTL for direct polling cache
-            r.setex(f"ai_status_cache:{document_id}", 3600, json.dumps(payload))
+            # Set key with TTL for direct polling cache
+            r.set(f"ai_status_cache:{document_id}", json.dumps(payload), ex=3600)
         except Exception as e:  # noqa: BLE001
             logger.debug(
                 "Redis status broadcast skipped for doc %s: %s", document_id, e
@@ -133,16 +133,21 @@ class AIDetectionOrchestrator:
         # -------------------------------------------------------------
         # Step 0: Preprocessing & Abstention Gate
         # -------------------------------------------------------------
-        preprocess_res: PreprocessResult = preprocess_for_ai_detection(text)
+        preprocess_res: PreprocessResult = preprocess_for_ai_detection(
+            text, min_tokens=self.MIN_PROSE_TOKENS_FOR_DETECTION
+        )
         prose_token_count = preprocess_res.prose_token_count
         cleaned_text = preprocess_res.cleaned_text
-        tamper_flags = [t.model_dump() for t in preprocess_res.tamper_events]
+        tamper_flags = [
+            {"type": "tamper_detected", "detail": d}
+            for d in preprocess_res.tamper_details
+        ]
 
-        if prose_token_count < self.MIN_PROSE_TOKENS_FOR_DETECTION:
+        if preprocess_res.abstain:
             reason = (
-                f"Document contains insufficient prose tokens ({prose_token_count} < "
-                f"{self.MIN_PROSE_TOKENS_FOR_DETECTION} tokens). Statistical zero-shot "
-                "evaluation abstained to prevent false attribution."
+                preprocess_res.abstain_reason
+                or f"Document contains insufficient prose tokens ({prose_token_count} < "
+                f"{self.MIN_PROSE_TOKENS_FOR_DETECTION} tokens)."
             )
             logger.warning(
                 "[%s] Abstaining from AI detection: %s", document_id, reason
