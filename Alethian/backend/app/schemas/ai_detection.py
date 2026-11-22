@@ -17,6 +17,7 @@ class AIDetectionWindowSchema(BaseModel):
     binoculars_score: float | None = None
     dna_score: float | None = None
     risk_level: str = Field(default="LOW", description="LOW, ELEVATED, or HIGH risk")
+    ai_probability: float | None = None
     excerpt: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -45,6 +46,7 @@ class AIDetectionResponse(BaseModel):
     verdict_label: str | None = None
     confidence_score: float = Field(ge=0.0, le=1.0)
     overall_ai_prob: float = Field(ge=0.0, le=1.0)
+    ai_probability: float | None = None
     binoculars_ratio: float | None = None
     dna_detect_score: float | None = None
     irm_divergence: float | None = None
