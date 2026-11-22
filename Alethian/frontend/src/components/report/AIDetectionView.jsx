@@ -7,7 +7,7 @@ function getTierDetails(verdict) {
         case 'T0_HUMAN':
             return {
                 title: 'Tier 0 · Human authored',
-                description: 'Statistical metrics align with natural human prose distributions across all test windows.',
+                description: 'Sentence structures, vocabulary diversity, and tone are consistent with authentic human writing. No automated AI language generation was detected.',
                 color: 'text-emerald-600 dark:text-emerald-400',
                 badge: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300',
                 bar: 'bg-emerald-500'
@@ -15,7 +15,7 @@ function getTierDetails(verdict) {
         case 'T1_INDETERMINATE':
             return {
                 title: 'Tier 1 · Inconclusive',
-                description: 'Stylometric perplexity ratios are borderline or insufficient prose volume for definitive attribution.',
+                description: 'Writing patterns are borderline or the text length is too brief to conclusively determine authorship.',
                 color: 'text-slate-600 dark:text-slate-400',
                 badge: 'bg-slate-500/10 border-slate-500/30 text-slate-700 dark:text-slate-300',
                 bar: 'bg-slate-500'
@@ -23,7 +23,7 @@ function getTierDetails(verdict) {
         case 'T2_ELEVATED':
             return {
                 title: 'Tier 2 · Mixed AI content',
-                description: 'Localized change-points detected. Specific sections demonstrate high machine-generation probability.',
+                description: 'Specific paragraphs display patterns typical of generative AI models, while other sections appear human-written.',
                 color: 'text-amber-600 dark:text-amber-400',
                 badge: 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300',
                 bar: 'bg-amber-500'
@@ -31,7 +31,7 @@ function getTierDetails(verdict) {
         case 'T3_HIGH':
             return {
                 title: 'Tier 3 · Elevated synthetic content',
-                description: 'Consensus across multiple foundation models indicates systematic automated generation.',
+                description: 'Extensive patterns characteristic of AI language models were detected consistently across the text.',
                 color: 'text-rose-600 dark:text-rose-400',
                 badge: 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300',
                 bar: 'bg-rose-500'
@@ -39,7 +39,7 @@ function getTierDetails(verdict) {
         default:
             return {
                 title: 'Unclassified',
-                description: 'Awaiting engine evaluation or non-prose document.',
+                description: 'Awaiting AI analysis or text is below minimum length.',
                 color: 'text-on-surface-variant',
                 badge: 'bg-surface-container border-ghost text-on-surface-variant',
                 bar: 'bg-surface-container-high'
@@ -57,6 +57,7 @@ export default function AIDetectionView({ documentText, pageTexts }) {
     } = useReportStore();
 
     const [activeTab, setActiveTab] = useState('windows'); // 'windows' | 'change_points' | 'tampering'
+    const [showDiagnostics, setShowDiagnostics] = useState(false);
 
     if (!aiDetectionResult) {
         return (
@@ -120,6 +121,48 @@ export default function AIDetectionView({ documentText, pageTexts }) {
                         <p className="text-xs text-on-surface-variant pt-1 leading-normal">
                             {tierInfo.description}
                         </p>
+                    </div>
+
+                    {/* Plain-English Authorship Explainer */}
+                    <div className="p-2.5 rounded bg-surface border border-ghost text-[11px] text-on-surface-variant space-y-1">
+                        <div className="flex items-center space-x-1.5 font-medium text-on-surface">
+                            <Info className="w-3.5 h-3.5 text-secondary flex-none" />
+                            <span>How AI detection works</span>
+                        </div>
+                        <p className="leading-relaxed">
+                            Rather than matching against online articles, neural models analyze word-choice predictability. Natural human writing has diverse sentence flow, while AI writing follows predictable statistical patterns.
+                        </p>
+                    </div>
+
+                    {/* Collapsible Technical Diagnostics */}
+                    <div className="pt-1">
+                        <button
+                            onClick={() => setShowDiagnostics(!showDiagnostics)}
+                            className="w-full text-[11px] text-on-surface-variant hover:text-on-surface flex items-center justify-between py-1 transition-colors"
+                        >
+                            <span>Technical model diagnostics</span>
+                            <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showDiagnostics ? 'rotate-90' : ''}`} />
+                        </button>
+                        {showDiagnostics && (
+                            <div className="mt-1.5 p-2.5 rounded bg-surface border border-ghost space-y-1.5 text-[10px] font-mono text-on-surface-variant">
+                                <div className="flex justify-between">
+                                    <span>Architecture:</span>
+                                    <span className="text-on-surface font-semibold">Qwen2.5 Dual-Stream</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Observer model:</span>
+                                    <span>Qwen2.5-0.5B</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Performer model:</span>
+                                    <span>Qwen2.5-0.5B-Instruct</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Decision threshold:</span>
+                                    <span>&lt;0.853 (AI) / &gt;0.901 (Human)</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Tamper Warning Banner */}
@@ -196,14 +239,14 @@ export default function AIDetectionView({ documentText, pageTexts }) {
                                             </div>
 
                                             <div className="grid grid-cols-2 gap-2 text-[11px] text-on-surface-variant font-mono pt-1">
-                                                <div>
-                                                    <span className="text-[10px] block opacity-70">Binoculars</span>
+                                                <div title="Word Flow (Binoculars): Natural vocabulary diversity. Higher score (>0.90) indicates human variation.">
+                                                    <span className="text-[10px] block opacity-70">Word flow (Binoculars)</span>
                                                     <span className="tabular-nums font-semibold text-on-surface">
                                                         {win.binoculars_score?.toFixed(4) ?? '—'}
                                                     </span>
                                                 </div>
-                                                <div>
-                                                    <span className="text-[10px] block opacity-70">DNA overlap</span>
+                                                <div title="AI Pattern (DNA): Similarity to algorithmic sentence templates. Lower is more authentic.">
+                                                    <span className="text-[10px] block opacity-70">AI pattern (DNA)</span>
                                                     <span className="tabular-nums font-semibold text-on-surface">
                                                         {win.dna_score?.toFixed(3) ?? '—'}
                                                     </span>
