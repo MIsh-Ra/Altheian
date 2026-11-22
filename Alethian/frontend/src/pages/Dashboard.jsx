@@ -53,8 +53,11 @@ export default function Dashboard() {
             
             setDocuments(prevDocs => [...mockEntries, ...prevDocs]);
         } catch (error) {
-            alert("One or more uploads failed. Please try again.");
-            console.error(error);
+            if (error?.response?.status !== 401) {
+                const detail = error?.response?.data?.detail || error.message || "Upload failed.";
+                alert(`Upload failed: ${detail}`);
+            }
+            console.error("Upload error:", error);
         } finally {
             setUploading(false);
             e.target.value = ''; // Reset input to allow re-uploading same files

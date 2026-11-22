@@ -15,14 +15,22 @@ async def get_current_user(
 ) -> User:
     token = credentials.credentials
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM],
+            options={"leeway": 300}
+        )
         username: str = payload.get("sub")
         if username is None:
             raise HTTPException(status_code=401, detail="Invalid token")
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
     
-    user = db.query(User).filter(User.username == username).first()
+    from sqlalchemy import or_
+    user = db.query(User).filter(
+        or_(User.username == username, User.email == username)
+    ).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     return user
