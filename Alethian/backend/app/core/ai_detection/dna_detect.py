@@ -7,16 +7,16 @@ and blends it into the Stage 1 composite score: R(s) = 0.5 * (B(s) + sigma(s)).
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
-from pydantic import BaseModel, Field
-import torch
 
-from app.core.ai_detection.model_manager import ModelManager
-from app.core.ai_detection.binoculars import (
+import torch
+from pydantic import BaseModel, Field
+
+from .binoculars import (
+    chunk_tokens_sliding_window,
     classify_evidentiary_tier,
     upcast_logits_to_fp32,
-    chunk_tokens_sliding_window,
 )
+from .model_manager import ModelManager
 
 logger = logging.getLogger(__name__)
 
@@ -25,18 +25,27 @@ class DNADetectResult(BaseModel):
     """Structured output for DNA-DetectLLM co-metric evaluation."""
 
     binoculars_score: float = Field(..., description="Base Binoculars ratio B(s)")
-    template_divergence_ratio: float = Field(..., description="Greedy template divergence ratio sigma(s)")
-    composite_score: float = Field(..., description="Stage 1 blended composite score R(s) = 0.5 * (B(s) + sigma(s))")
-    evidentiary_tier: str = Field(..., description="Evidentiary tier from composite score")
+    template_divergence_ratio: float = Field(
+        ..., description="Greedy template divergence ratio sigma(s)"
+    )
+    composite_score: float = Field(
+        ...,
+        description="Stage 1 blended composite score R(s) = 0.5 * (B(s) + sigma(s))",
+    )
+    evidentiary_tier: str = Field(
+        ..., description="Evidentiary tier from composite score"
+    )
     token_count: int = Field(..., description="Total tokens analyzed")
-    window_composite_scores: Optional[List[float]] = Field(default=None, description="Per-window composite scores")
+    window_composite_scores: list[float] | None = Field(
+        default=None, description="Per-window composite scores"
+    )
 
 
 def compute_dna_detect_score(
     obs_logits: torch.Tensor,
     perf_logits: torch.Tensor,
     input_ids: torch.Tensor,
-    attention_mask: Optional[torch.Tensor] = None,
+    attention_mask: torch.Tensor | None = None,
 ) -> DNADetectResult:
     """
     Computes DNA-DetectLLM template divergence ratio sigma(s) and Stage 1 blended
@@ -65,7 +74,9 @@ def compute_dna_detect_score(
     greedy_log_probs = log_q.max(dim=-1).values
 
     # 3. Performer Log-PPL on observed tokens
-    gathered_log_q = torch.gather(log_q, dim=-1, index=shift_labels.unsqueeze(-1)).squeeze(-1)
+    gathered_log_q = torch.gather(
+        log_q, dim=-1, index=shift_labels.unsqueeze(-1)
+    ).squeeze(-1)
 
     if attention_mask is not None:
         shift_mask = attention_mask[:, 1:].to(target_device).contiguous().float()
@@ -97,7 +108,7 @@ class DNADetectScorer:
     pass logits to calculate greedy ideal-AI template divergence and blended Stage 1 score.
     """
 
-    def __init__(self, model_manager: Optional[ModelManager] = None) -> None:
+    def __init__(self, model_manager: ModelManager | None = None) -> None:
         self.model_manager = model_manager or ModelManager.get_instance()
 
     def compute_score_from_logits(
@@ -105,7 +116,7 @@ class DNADetectScorer:
         obs_logits: torch.Tensor,
         perf_logits: torch.Tensor,
         input_ids: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None,
+        attention_mask: torch.Tensor | None = None,
     ) -> DNADetectResult:
         """
         Computes DNA-DetectLLM co-metric directly from forward pass logits.
@@ -117,12 +128,14 @@ class DNADetectScorer:
             attention_mask=attention_mask,
         )
 
-    def score_tokens(self, tokens: List[int]) -> DNADetectResult:
+    def score_tokens(self, tokens: list[int]) -> DNADetectResult:
         """
         Evaluates a token sequence using sliding windows of size 512 and stride 256.
         """
         if not self.model_manager._is_loaded:
-            raise RuntimeError("ModelManager models are not loaded. Call load_models() first.")
+            raise RuntimeError(
+                "ModelManager models are not loaded. Call load_models() first."
+            )
 
         windows = chunk_tokens_sliding_window(tokens, window_size=512, stride=256)
         if not windows:
@@ -135,12 +148,14 @@ class DNADetectScorer:
                 window_composite_scores=[],
             )
 
-        window_scores: List[float] = []
-        all_b_scores: List[float] = []
-        all_sigmas: List[float] = []
+        window_scores: list[float] = []
+        all_b_scores: list[float] = []
+        all_sigmas: list[float] = []
 
         obs_model = self.model_manager.observer_model
         perf_model = self.model_manager.performer_model
+        if obs_model is None or perf_model is None:
+            raise RuntimeError("Observer or performer model is not loaded.")
         obs_dev = self.model_manager.observer_device
         perf_dev = self.model_manager.performer_device
 
@@ -177,7 +192,9 @@ class DNADetectScorer:
         Tokenizes text and evaluates DNA-DetectLLM blended score.
         """
         if self.model_manager.tokenizer is None:
-            raise RuntimeError("Tokenizer not loaded. Call model_manager.load_models() first.")
+            raise RuntimeError(
+                "Tokenizer not loaded. Call model_manager.load_models() first."
+            )
 
         tokens = self.model_manager.tokenizer.encode(text, add_special_tokens=False)
         return self.score_tokens(tokens)

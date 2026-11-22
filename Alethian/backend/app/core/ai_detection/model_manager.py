@@ -8,11 +8,17 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Optional, Any
+from typing import Any
+
 import torch
 
 try:
-    from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedModel, PreTrainedTokenizerBase
+    from transformers import (
+        AutoModelForCausalLM,
+        AutoTokenizer,
+        PreTrainedModel,
+        PreTrainedTokenizerBase,
+    )
 except ImportError:
     AutoModelForCausalLM = None  # type: ignore[assignment, misc]
     AutoTokenizer = None  # type: ignore[assignment, misc]
@@ -28,19 +34,21 @@ class ModelManager:
     causal language models for Binoculars and DNA-DetectLLM scoring.
     """
 
-    _instance: Optional[ModelManager] = None
+    _instance: ModelManager | None = None
     _lock: threading.Lock = threading.Lock()
 
     def __init__(self) -> None:
         self.observer_name: str = "tiiuae/falcon-7b"
         self.performer_name: str = "tiiuae/falcon-7b-instruct"
         self.observer_device: str = "cuda:0" if torch.cuda.is_available() else "cpu"
-        self.performer_device: str = "cuda:1" if torch.cuda.device_count() > 1 else (
-            "cuda:0" if torch.cuda.is_available() else "cpu"
+        self.performer_device: str = (
+            "cuda:1"
+            if torch.cuda.device_count() > 1
+            else ("cuda:0" if torch.cuda.is_available() else "cpu")
         )
-        self.observer_model: Optional[Any] = None
-        self.performer_model: Optional[Any] = None
-        self.tokenizer: Optional[Any] = None
+        self.observer_model: Any | None = None
+        self.performer_model: Any | None = None
+        self.tokenizer: Any | None = None
         self._is_loaded: bool = False
 
     @classmethod
@@ -68,7 +76,9 @@ class ModelManager:
         and assigns them to the specified GPU devices.
         """
         if AutoModelForCausalLM is None or AutoTokenizer is None:
-            raise RuntimeError("transformers is required to load causal language models.")
+            raise RuntimeError(
+                "transformers is required to load causal language models."
+            )
 
         self.observer_name = observer_name
         self.performer_name = performer_name
@@ -94,10 +104,12 @@ class ModelManager:
         obs_model.eval()
 
         # Handle device placement safely
-        if torch.cuda.is_available() and observer_device.startswith("cuda"):
-            obs_model = obs_model.to(observer_device)
-        elif not observer_device.startswith("cuda"):
-            obs_model = obs_model.to(observer_device)
+        if (
+            torch.cuda.is_available()
+            and observer_device.startswith("cuda")
+            or not observer_device.startswith("cuda")
+        ):
+            obs_model = obs_model.to(observer_device)  # type: ignore[arg-type]
 
         self.observer_model = obs_model
 
@@ -112,10 +124,12 @@ class ModelManager:
         perf_model.eval()
 
         # Handle device placement safely
-        if torch.cuda.is_available() and performer_device.startswith("cuda"):
-            perf_model = perf_model.to(performer_device)
-        elif not performer_device.startswith("cuda"):
-            perf_model = perf_model.to(performer_device)
+        if (
+            torch.cuda.is_available()
+            and performer_device.startswith("cuda")
+            or not performer_device.startswith("cuda")
+        ):
+            perf_model = perf_model.to(performer_device)  # type: ignore[arg-type]
 
         self.performer_model = perf_model
 
@@ -126,5 +140,7 @@ class ModelManager:
         self.tokenizer = tokenizer
 
         self._is_loaded = True
-        logger.info("Successfully initialized and loaded observer & performer models in FP16 with SDPA.")
+        logger.info(
+            "Successfully initialized and loaded observer & performer models in FP16 with SDPA."
+        )
         return self

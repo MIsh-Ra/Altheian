@@ -7,12 +7,13 @@ and calculates Performer Log-PPL and Observer-Performer Cross-PPL ratios.
 from __future__ import annotations
 
 import logging
-from typing import List, Optional, Sequence, Tuple
-from pydantic import BaseModel, Field
+from collections.abc import Sequence
+
 import torch
 import torch.nn.functional as F
+from pydantic import BaseModel, Field
 
-from app.core.ai_detection.model_manager import ModelManager
+from .model_manager import ModelManager
 
 logger = logging.getLogger(__name__)
 
@@ -23,19 +24,27 @@ class WindowChunk(BaseModel):
     window_idx: int
     start_idx: int
     end_idx: int
-    tokens: List[int]
+    tokens: list[int]
     warmup_discard: int = 0
 
 
 class BinocularsResult(BaseModel):
     """Structured output for Binoculars score evaluation."""
 
-    performer_log_ppl: float = Field(..., description="Performer model Log-PPL (numerator)")
-    cross_ppl: float = Field(..., description="Observer-Performer Cross-PPL (denominator)")
-    binoculars_score: float = Field(..., description="Ratio of performer log-ppl to cross-ppl")
+    performer_log_ppl: float = Field(
+        ..., description="Performer model Log-PPL (numerator)"
+    )
+    cross_ppl: float = Field(
+        ..., description="Observer-Performer Cross-PPL (denominator)"
+    )
+    binoculars_score: float = Field(
+        ..., description="Ratio of performer log-ppl to cross-ppl"
+    )
     evidentiary_tier: str = Field(..., description="Evidentiary classification tier")
     token_count: int = Field(..., description="Total tokens analyzed")
-    window_scores: Optional[List[float]] = Field(default=None, description="Per-window Binoculars scores")
+    window_scores: list[float] | None = Field(
+        default=None, description="Per-window Binoculars scores"
+    )
 
 
 def classify_evidentiary_tier(score: float) -> str:
@@ -53,7 +62,7 @@ def classify_evidentiary_tier(score: float) -> str:
         return "ESCALATE"
 
 
-def upcast_logits_to_fp32(logits: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+def upcast_logits_to_fp32(logits: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Casts logits to float32 before computing F.log_softmax and F.softmax,
     eliminating FP16 overflow/saturation at 65,504 and guaranteeing zero NaNs or Infs.
@@ -74,7 +83,7 @@ def chunk_tokens_sliding_window(
     token_sequence: Sequence[int],
     window_size: int = 512,
     stride: int = 256,
-) -> List[WindowChunk]:
+) -> list[WindowChunk]:
     """
     Partitions a token sequence into 512-token windows with stride 256 (50% overlap).
     For non-initial windows (window_idx > 0), marks warmup_discard=128 to ensure
@@ -94,7 +103,7 @@ def chunk_tokens_sliding_window(
             )
         ]
 
-    windows: List[WindowChunk] = []
+    windows: list[WindowChunk] = []
     window_idx = 0
     start = 0
 
@@ -119,10 +128,10 @@ def chunk_tokens_sliding_window(
 
 
 def stitch_sliding_window_scores(
-    windows: List[WindowChunk],
-    window_per_token_scores: List[List[float]],
+    windows: list[WindowChunk],
+    window_per_token_scores: list[list[float]],
     warmup_tokens: int = 128,
-) -> List[float]:
+) -> list[float]:
     """
     Stitches per-token window scores across the entire sequence.
     Discards the first `warmup_tokens` for non-initial windows (window_idx > 0).
@@ -131,7 +140,7 @@ def stitch_sliding_window_scores(
     if not windows:
         return []
     total_tokens = max(w.end_idx for w in windows)
-    token_accum: List[List[float]] = [[] for _ in range(total_tokens)]
+    token_accum: list[list[float]] = [[] for _ in range(total_tokens)]
 
     for w, scores in zip(windows, window_per_token_scores):
         warmup = w.warmup_discard if w.window_idx > 0 else 0
@@ -140,7 +149,7 @@ def stitch_sliding_window_scores(
             if doc_idx < total_tokens:
                 token_accum[doc_idx].append(scores[local_idx])
 
-    result: List[float] = []
+    result: list[float] = []
     last_val = 0.0
     for vals in token_accum:
         if vals:
@@ -155,8 +164,8 @@ def compute_binoculars_ratio(
     obs_logits: torch.Tensor,
     perf_logits: torch.Tensor,
     input_ids: torch.Tensor,
-    attention_mask: Optional[torch.Tensor] = None,
-) -> Tuple[float, float, float]:
+    attention_mask: torch.Tensor | None = None,
+) -> tuple[float, float, float]:
     """
     Computes Performer Log-PPL, Observer-Performer Cross-PPL, and Binoculars score
     from observer and performer causal logits.
@@ -181,7 +190,9 @@ def compute_binoculars_ratio(
     _, p_obs = upcast_logits_to_fp32(shift_obs_logits)
 
     # Performer Log-PPL: - 1/|I| sum log P_M2(x_i | x_<i)
-    gathered_log_q = torch.gather(log_q, dim=-1, index=shift_labels.unsqueeze(-1)).squeeze(-1)
+    gathered_log_q = torch.gather(
+        log_q, dim=-1, index=shift_labels.unsqueeze(-1)
+    ).squeeze(-1)
 
     # Cross-PPL: - 1/|I| sum_i sum_v p_M1(v | x_<i) * log p_M2(v | x_<i)
     token_cross_entropy = -(p_obs * log_q).sum(dim=-1)
@@ -205,7 +216,7 @@ class BinocularsScorer:
     with Falcon-7B (Observer) and Falcon-7B-Instruct (Performer).
     """
 
-    def __init__(self, model_manager: Optional[ModelManager] = None) -> None:
+    def __init__(self, model_manager: ModelManager | None = None) -> None:
         self.model_manager = model_manager or ModelManager.get_instance()
 
     def compute_score_from_logits(
@@ -213,7 +224,7 @@ class BinocularsScorer:
         obs_logits: torch.Tensor,
         perf_logits: torch.Tensor,
         input_ids: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None,
+        attention_mask: torch.Tensor | None = None,
     ) -> BinocularsResult:
         """
         Computes Binoculars metrics directly from precomputed logits.
@@ -235,12 +246,14 @@ class BinocularsScorer:
             token_count=token_count,
         )
 
-    def score_tokens(self, tokens: List[int]) -> BinocularsResult:
+    def score_tokens(self, tokens: list[int]) -> BinocularsResult:
         """
         Evaluates a token sequence using sliding windows of size 512 and stride 256.
         """
         if not self.model_manager._is_loaded:
-            raise RuntimeError("ModelManager models are not loaded. Call load_models() first.")
+            raise RuntimeError(
+                "ModelManager models are not loaded. Call load_models() first."
+            )
 
         windows = chunk_tokens_sliding_window(tokens, window_size=512, stride=256)
         if not windows:
@@ -253,12 +266,14 @@ class BinocularsScorer:
                 window_scores=[],
             )
 
-        window_scores: List[float] = []
-        all_ppl: List[float] = []
-        all_xppl: List[float] = []
+        window_scores: list[float] = []
+        all_ppl: list[float] = []
+        all_xppl: list[float] = []
 
         obs_model = self.model_manager.observer_model
         perf_model = self.model_manager.performer_model
+        if obs_model is None or perf_model is None:
+            raise RuntimeError("Observer or performer model is not loaded.")
         obs_dev = self.model_manager.observer_device
         perf_dev = self.model_manager.performer_device
 
@@ -295,7 +310,9 @@ class BinocularsScorer:
         Tokenizes text and evaluates Binoculars score.
         """
         if self.model_manager.tokenizer is None:
-            raise RuntimeError("Tokenizer not loaded. Call model_manager.load_models() first.")
+            raise RuntimeError(
+                "Tokenizer not loaded. Call model_manager.load_models() first."
+            )
 
         tokens = self.model_manager.tokenizer.encode(text, add_special_tokens=False)
         return self.score_tokens(tokens)

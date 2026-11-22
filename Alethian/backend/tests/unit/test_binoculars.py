@@ -10,30 +10,31 @@ Verifies:
 """
 
 from unittest.mock import MagicMock, patch
+
 import pytest
 import torch
 import torch.nn.functional as F
 
 try:
-    from app.core.ai_detection.model_manager import ModelManager
     from app.core.ai_detection.binoculars import (
         BinocularsScorer,
-        classify_evidentiary_tier,
         chunk_tokens_sliding_window,
+        classify_evidentiary_tier,
         stitch_sliding_window_scores,
         upcast_logits_to_fp32,
     )
     from app.core.ai_detection.dna_detect import DNADetectScorer
+    from app.core.ai_detection.model_manager import ModelManager
 except ImportError:
-    from backend.app.core.ai_detection.model_manager import ModelManager
     from backend.app.core.ai_detection.binoculars import (
         BinocularsScorer,
-        classify_evidentiary_tier,
         chunk_tokens_sliding_window,
+        classify_evidentiary_tier,
         stitch_sliding_window_scores,
         upcast_logits_to_fp32,
     )
     from backend.app.core.ai_detection.dna_detect import DNADetectScorer
+    from backend.app.core.ai_detection.model_manager import ModelManager
 
 
 def test_model_manager_singleton_initialization():
@@ -49,9 +50,10 @@ def test_model_manager_singleton_initialization():
     assert manager1 is manager2, "ModelManager must be a strict singleton"
 
     # Mock AutoModelForCausalLM and AutoTokenizer from transformers
-    with patch("transformers.AutoModelForCausalLM.from_pretrained") as mock_model_loader, \
-         patch("transformers.AutoTokenizer.from_pretrained") as mock_tokenizer_loader:
-
+    with (
+        patch("transformers.AutoModelForCausalLM.from_pretrained") as mock_model_loader,
+        patch("transformers.AutoTokenizer.from_pretrained") as mock_tokenizer_loader,
+    ):
         mock_obs_model = MagicMock()
         mock_perf_model = MagicMock()
         mock_obs_model.config.use_cache = True
@@ -68,7 +70,9 @@ def test_model_manager_singleton_initialization():
             performer_device="cuda:1",
         )
 
-        assert mock_model_loader.call_count == 2, "Both observer and performer models must be loaded"
+        assert mock_model_loader.call_count == 2, (
+            "Both observer and performer models must be loaded"
+        )
 
         # Check call arguments for observer and performer
         calls = mock_model_loader.call_args_list
@@ -124,7 +128,9 @@ def test_fp32_logit_upcast_stability():
 
     # Softmax probabilities should sum to 1.0 along the vocabulary axis
     sums = probs.sum(dim=-1)
-    assert torch.allclose(sums, torch.ones_like(sums), atol=1e-5), "Softmax probabilities must sum to 1"
+    assert torch.allclose(sums, torch.ones_like(sums), atol=1e-5), (
+        "Softmax probabilities must sum to 1"
+    )
 
     # All probabilities must be in [0.0, 1.0]
     assert (probs >= 0.0).all() and (probs <= 1.0).all()
@@ -159,7 +165,9 @@ def test_binoculars_ratio_formula():
 
     # Performer Log-PPL = - 1/|I| sum log P_M2(x_i | x_<i)
     # Gather the log prob of observed target tokens
-    gathered_log_q = torch.gather(log_q, dim=-1, index=shift_labels.unsqueeze(-1)).squeeze(-1)
+    gathered_log_q = torch.gather(
+        log_q, dim=-1, index=shift_labels.unsqueeze(-1)
+    ).squeeze(-1)
     expected_performer_log_ppl = -gathered_log_q.mean().item()
 
     # Cross-PPL = - 1/|I| sum_i sum_v p_M1(v | x_<i) * log p_M2(v | x_<i)
@@ -167,7 +175,9 @@ def test_binoculars_ratio_formula():
 
     expected_binoculars_ratio = expected_performer_log_ppl / expected_cross_ppl
 
-    assert pytest.approx(expected_performer_log_ppl, rel=1e-5) == result.performer_log_ppl
+    assert (
+        pytest.approx(expected_performer_log_ppl, rel=1e-5) == result.performer_log_ppl
+    )
     assert pytest.approx(expected_cross_ppl, rel=1e-5) == result.cross_ppl
     assert pytest.approx(expected_binoculars_ratio, rel=1e-5) == result.binoculars_score
 
@@ -187,7 +197,9 @@ def test_dna_detectllm_greedy_template():
     perf_logits = torch.randn(batch_size, seq_len, vocab_size, dtype=torch.float16)
 
     dna_scorer = DNADetectScorer()
-    dna_result = dna_scorer.compute_score_from_logits(obs_logits, perf_logits, input_ids)
+    dna_result = dna_scorer.compute_score_from_logits(
+        obs_logits, perf_logits, input_ids
+    )
 
     # Manual verification
     shift_perf_logits = perf_logits[:, :-1, :].contiguous().float()
@@ -204,12 +216,16 @@ def test_dna_detectllm_greedy_template():
     expected_cross_ppl = -(p_obs * log_q).sum(dim=-1).mean().item()
     expected_sigma = expected_template_nll / expected_cross_ppl
 
-    gathered_log_q = torch.gather(log_q, dim=-1, index=shift_labels.unsqueeze(-1)).squeeze(-1)
+    gathered_log_q = torch.gather(
+        log_q, dim=-1, index=shift_labels.unsqueeze(-1)
+    ).squeeze(-1)
     expected_binoculars = (-gathered_log_q.mean().item()) / expected_cross_ppl
 
     expected_composite_r = 0.5 * (expected_binoculars + expected_sigma)
 
-    assert pytest.approx(expected_sigma, rel=1e-5) == dna_result.template_divergence_ratio
+    assert (
+        pytest.approx(expected_sigma, rel=1e-5) == dna_result.template_divergence_ratio
+    )
     assert pytest.approx(expected_composite_r, rel=1e-5) == dna_result.composite_score
 
 
@@ -236,11 +252,15 @@ def test_sliding_window_context_chunker():
     assert windows[1].start_idx == 256
     assert windows[1].end_idx == 768
     assert len(windows[1].tokens) == 512
-    assert windows[1].warmup_discard == 128, "Window 1 must discard first 128 warmup tokens"
+    assert windows[1].warmup_discard == 128, (
+        "Window 1 must discard first 128 warmup tokens"
+    )
 
     assert windows[2].start_idx == 512
     assert windows[2].end_idx == 1000
-    assert windows[2].warmup_discard == 128, "Window 2 must discard first 128 warmup tokens"
+    assert windows[2].warmup_discard == 128, (
+        "Window 2 must discard first 128 warmup tokens"
+    )
 
     # Now verify stitching per-token scores:
     # Mock scores for each window
@@ -250,7 +270,9 @@ def test_sliding_window_context_chunker():
         [3.0] * len(windows[2].tokens),
     ]
 
-    stitched_scores = stitch_sliding_window_scores(windows, window_per_token_scores, warmup_tokens=128)
+    stitched_scores = stitch_sliding_window_scores(
+        windows, window_per_token_scores, warmup_tokens=128
+    )
 
     # Verify length of stitched scores matches total tokens
     assert len(stitched_scores) == total_tokens
