@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useReportStore } from '../../stores/reportStore';
-import { FileText, Globe } from 'lucide-react';
+import { FileText, Globe, MessageSquare, EyeOff, RotateCcw } from 'lucide-react';
 import Client from '../../api/client';
 import { useParams } from 'react-router-dom';
 
@@ -32,71 +32,100 @@ export default function MatchCard({ match, onUpdate }) {
 
     if (match.is_excluded) {
         return (
-            <div className="p-4 bg-surface-container border border-ghost opacity-50 transition-opacity hover:opacity-100 flex justify-between items-center pr-6">
-                <span className="text-on-surface-variant font-mono text-xs uppercase tracking-widest line-through">EXCLUDED ANOMALY</span>
-                <button onClick={handleRestore} className="text-secondary font-bold text-xs uppercase hover:underline">RESTORE</button>
+            <div className="p-3 bg-surface-container-low border border-ghost rounded-sm opacity-60 hover:opacity-100 transition-opacity flex justify-between items-center text-xs">
+                <span className="text-on-surface-variant font-mono line-through">Excluded match (Page {match.submitted_page})</span>
+                <button
+                    onClick={handleRestore}
+                    className="inline-flex items-center space-x-1 text-secondary font-medium hover:underline text-xs"
+                >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>RESTORE</span>
+                </button>
             </div>
         );
     }
 
     const isInternal = match.type === 'internal_exact' || match.type === 'internal_paraphrase';
-    
-    // Triage cards: 4px left-accent border based on severity
-    let accentBorder = 'border-l-4 border-l-secondary';
-    if (match.type === 'internal_exact') accentBorder = 'border-l-4 border-l-error';
-    else if (match.type === 'internal_paraphrase') accentBorder = 'border-l-4 border-l-primary-fixed';
-
     const Icon = isInternal ? FileText : Globe;
     const isSelected = selectedMatchId === match.id;
+
+    let borderIndicator = 'border-l-2 border-l-secondary';
+    if (match.type === 'internal_exact') borderIndicator = 'border-l-2 border-l-rose-500';
+    else if (match.type === 'internal_paraphrase') borderIndicator = 'border-l-2 border-l-amber-500';
 
     return (
         <div
             onClick={() => setSelectedMatch(match.id)}
-            className={`p-4 bg-surface-container border border-ghost cursor-pointer transition-colors ${accentBorder} ${
-                isSelected ? 'bg-surface-container-highest shadow-ambient border-outline' : 'hover:bg-surface-container-high'
+            className={`p-3.5 bg-surface border rounded-sm cursor-pointer transition-colors ${borderIndicator} ${
+                isSelected
+                    ? 'border-secondary ring-1 ring-secondary/50 bg-surface-container-low shadow-xs'
+                    : 'border-ghost hover:border-outline/50 hover:bg-surface-container-low/60'
             }`}
         >
-            <div className="flex justify-between items-start mb-3">
-                <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-widest text-on-surface">
-                    <Icon className="w-3 h-3 mr-2" />
-                    {match.type.replace('_', ' ')}
+            <div className="flex justify-between items-center mb-2">
+                <span className="inline-flex items-center text-xs font-medium text-on-surface space-x-1.5">
+                    <Icon className="w-3.5 h-3.5 text-on-surface-variant" strokeWidth={1.5} />
+                    <span>{match.type ? match.type.replace(/_/g, ' ') : 'Match'}</span>
                 </span>
-                <span className={`text-xs font-mono font-bold ${match.similarity >= 80 ? 'text-error' : 'text-on-surface'}`}>
+                <span className={`text-xs font-mono font-semibold tabular-nums ${
+                    match.similarity >= 80 ? 'text-rose-600 dark:text-rose-400' : 'text-on-surface'
+                }`}>
                     {Math.round(match.similarity)}%
                 </span>
             </div>
 
-            <div className={`text-sm text-on-surface font-sans leading-relaxed line-clamp-3 mb-4`}>
+            <p className="text-xs text-on-surface-variant font-serif leading-relaxed line-clamp-3 mb-3 pl-2 border-l border-ghost">
                 "{match.submitted_text}"
-            </div>
+            </p>
 
-            <div className="flex items-center justify-between text-xs text-on-surface-variant font-mono uppercase tracking-widest pt-2 border-t border-ghost">
+            <div className="flex items-center justify-between text-[11px] text-on-surface-variant font-mono pt-2 border-t border-ghost">
                 <span>PAGE {match.submitted_page}</span>
-                <div className="space-x-4">
-                    <button onClick={(e) => { e.stopPropagation(); setIsEditingComment(true); }} className="hover:text-primary transition-colors">COMMENT</button>
-                    <button onClick={handleExclude} className="text-error hover:text-error-container transition-colors">EXCLUDE</button>
+                <div className="space-x-3">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setIsEditingComment(true); }}
+                        className="hover:text-on-surface transition-colors"
+                    >
+                        COMMENT
+                    </button>
+                    <button
+                        onClick={handleExclude}
+                        className="text-rose-600 dark:text-rose-400 hover:text-rose-700 transition-colors"
+                    >
+                        EXCLUDE
+                    </button>
                 </div>
             </div>
 
             {isEditingComment ? (
-                <div className="mt-4 pt-3 border-t border-ghost" onClick={(e) => e.stopPropagation()}>
+                <div className="mt-3 pt-2.5 border-t border-ghost space-y-2" onClick={(e) => e.stopPropagation()}>
                     <textarea 
                         value={commentText} 
                         onChange={(e) => setCommentText(e.target.value)} 
-                        className="w-full text-xs font-mono p-3 bg-surface border border-ghost text-on-surface focus:border-outline focus:outline-none transition-colors rounded-none placeholder-on-surface-variant/50 min-h-[60px]" 
+                        className="w-full text-xs font-sans p-2.5 bg-surface-container-low border border-ghost text-on-surface focus:border-outline focus:outline-none transition-colors rounded placeholder:text-on-surface-variant/50 min-h-[64px]" 
                         placeholder="ENTER TRIAGE LOG..."
                     />
-                    <div className="flex justify-end space-x-3 mt-2">
-                        <button onClick={() => setIsEditingComment(false)} className="text-xs font-mono text-on-surface-variant hover:text-on-surface">CANCEL</button>
-                        <button onClick={handleSaveComment} className="text-xs font-mono text-secondary font-bold hover:text-secondary-fixed">SAVE LOG</button>
+                    <div className="flex justify-end space-x-2">
+                        <button
+                            onClick={() => setIsEditingComment(false)}
+                            className="px-2.5 py-1 text-xs text-on-surface-variant hover:text-on-surface rounded"
+                        >
+                            CANCEL
+                        </button>
+                        <button
+                            onClick={handleSaveComment}
+                            className="px-2.5 py-1 text-xs bg-primary text-on-primary font-medium rounded hover:opacity-90"
+                        >
+                            SAVE LOG
+                        </button>
                     </div>
                 </div>
             ) : match.comment && (
-                <div className="mt-4 pt-3 border-t border-ghost bg-surface-container-lowest p-3">
-                    <div className="text-[10px] uppercase font-bold tracking-widest text-secondary mb-1">TRIAGE LOG</div>
-                    <div className="text-xs text-on-surface">{match.comment}</div>
+                <div className="mt-3 pt-2 border-t border-ghost bg-surface-container-low p-2 rounded text-xs space-y-0.5">
+                    <span className="text-[10px] text-secondary font-medium uppercase tracking-wide block">Triage note</span>
+                    <p className="text-on-surface text-xs">{match.comment}</p>
                 </div>
             )}
         </div>
     );
 }
+

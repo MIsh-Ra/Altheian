@@ -1,19 +1,32 @@
 import { useReportStore } from '../../stores/reportStore';
 
-const TYPE_COLORS = {
-    internal_exact: '#ef4444',
-    internal_paraphrase: '#f97316',
-    web: '#3b82f6',
-    clean: '#22c55e',
-};
-
-function getColor(page) {
-    const density = page.match_density ?? page.density_score ?? 0;
-    if (density === 0) return '#22c55e';
-    if (density <= 0.25) return '#eab308';
-    if (density <= 0.50) return '#f97316';
-    if (density <= 0.75) return '#ef4444';
-    return '#dc2626';
+function getDensityTint(density, hasMatch) {
+    if (!hasMatch || density === 0) {
+        return {
+            bg: 'bg-surface-container-high/30',
+            bar: 'bg-transparent',
+            text: 'text-on-surface-variant/70'
+        };
+    }
+    if (density <= 0.25) {
+        return {
+            bg: 'bg-amber-500/10',
+            bar: 'bg-amber-500/60',
+            text: 'text-amber-600 dark:text-amber-400'
+        };
+    }
+    if (density <= 0.50) {
+        return {
+            bg: 'bg-orange-500/15',
+            bar: 'bg-orange-500/70',
+            text: 'text-orange-600 dark:text-orange-400'
+        };
+    }
+    return {
+        bg: 'bg-rose-500/15',
+        bar: 'bg-rose-500/80',
+        text: 'text-rose-600 dark:text-rose-400'
+    };
 }
 
 export default function Heatmap({ pages }) {
@@ -21,8 +34,8 @@ export default function Heatmap({ pages }) {
 
     if (!pages || pages.length === 0) {
         return (
-            <div className="text-on-surface-variant text-xs font-mono tracking-widest italic uppercase p-4">
-                No heatmap data available.
+            <div className="text-on-surface-variant text-xs font-mono p-4 text-center">
+                No page density data available
             </div>
         );
     }
@@ -38,122 +51,53 @@ export default function Heatmap({ pages }) {
     };
 
     return (
-        <div>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-on-surface mb-3">
-                Page Heatmap
-            </h3>
-            {/* Scrollable container — never taller than ~220px so matches list stays visible */}
-            <div
-                style={{ maxHeight: '220px', overflowY: 'auto', overflowX: 'hidden' }}
-                className="pr-1"
-            >
-                {/* Mini-page grid */}
-                <div
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(36px, 1fr))',
-                        gap: '6px',
-                    }}
-                >
+        <div className="space-y-3">
+            <div className="flex items-center justify-between">
+                <h3 className="text-xs font-medium text-on-surface">Page density map</h3>
+                <span className="text-[10px] font-mono tabular-nums text-on-surface-variant">
+                    {pages.length} pages
+                </span>
+            </div>
+
+            {/* Scrollable grid of mini-pages */}
+            <div className="max-h-[220px] overflow-y-auto pr-1">
+                <div className="grid grid-cols-5 gap-2">
                     {pages.map((page) => {
                         const pageNum = page.page_number;
                         const density = page.match_density ?? page.density_score ?? 0;
-                        const color = getColor(page);
-                        const isActive = currentPage === pageNum;
                         const matchCount = page.match_count || 0;
                         const hasMatch = matchCount > 0;
-                        const fillHeight = Math.round(density * 100); // % of page height to colour
+                        const isActive = currentPage === pageNum;
+                        const tint = getDensityTint(density, hasMatch);
+                        const fillPercent = Math.min(100, Math.max(hasMatch ? 12 : 0, Math.round(density * 100)));
 
                         return (
                             <button
                                 key={pageNum}
                                 onClick={() => handlePageClick(pageNum)}
-                                title={`Page ${pageNum} — density ${Math.round(density * 100)}%${hasMatch ? ` (${matchCount} match${matchCount > 1 ? 'es' : ''})` : ''}`}
-                                style={{
-                                    position: 'relative',
-                                    width: '36px',
-                                    height: '48px',
-                                    border: isActive
-                                        ? `2px solid ${color}`
-                                        : '1.5px solid var(--color-ghost, #333)',
-                                    borderRadius: '2px',
-                                    backgroundColor: 'var(--color-surface-container-highest, #1e1e1e)',
-                                    overflow: 'hidden',
-                                    cursor: 'pointer',
-                                    padding: 0,
-                                    boxShadow: isActive ? `0 0 0 2px ${color}33` : undefined,
-                                    transition: 'border-color 0.15s, box-shadow 0.15s',
-                                    flexShrink: 0,
-                                }}
+                                title={`Page ${pageNum} — ${Math.round(density * 100)}% density (${matchCount} match${matchCount === 1 ? '' : 'es'})`}
+                                className={`relative h-14 rounded-sm border transition-all text-left overflow-hidden flex flex-col justify-between p-1.5 select-none ${tint.bg} ${
+                                    isActive
+                                        ? 'border-secondary ring-1 ring-secondary shadow-sm'
+                                        : 'border-ghost hover:border-outline'
+                                }`}
                             >
-                                {/* Density fill — rises from the bottom like ink soaking in */}
+                                {/* Bottom density indicator bar */}
                                 <div
-                                    style={{
-                                        position: 'absolute',
-                                        bottom: 0,
-                                        left: 0,
-                                        right: 0,
-                                        height: `${Math.max(hasMatch ? 8 : 0, fillHeight)}%`,
-                                        backgroundColor: color,
-                                        opacity: hasMatch ? 0.75 : 0.15,
-                                        transition: 'height 0.3s ease',
-                                    }}
+                                    className={`absolute bottom-0 left-0 right-0 ${tint.bar} transition-[height] duration-200`}
+                                    style={{ height: `${fillPercent}%` }}
                                 />
 
-                                {/* Internal density sub-layer (darker red tint on top of base fill) */}
-                                {page.internal_density > 0 && (
-                                    <div
-                                        style={{
-                                            position: 'absolute',
-                                            bottom: 0,
-                                            left: 0,
-                                            right: 0,
-                                            height: `${Math.round(page.internal_density * 100)}%`,
-                                            backgroundColor: '#ef4444',
-                                            opacity: 0.35,
-                                        }}
-                                    />
-                                )}
-
-                                {/* Page number label */}
-                                <span
-                                    style={{
-                                        position: 'absolute',
-                                        top: '2px',
-                                        left: 0,
-                                        right: 0,
-                                        textAlign: 'center',
-                                        fontSize: '8px',
-                                        fontFamily: 'monospace',
-                                        fontWeight: 700,
-                                        color: isActive ? color : 'var(--color-on-surface-variant, #aaa)',
-                                        lineHeight: 1,
-                                        zIndex: 1,
-                                        userSelect: 'none',
-                                    }}
-                                >
+                                {/* Page Number */}
+                                <span className={`relative z-10 text-[10px] font-mono tabular-nums font-medium ${
+                                    isActive ? 'text-secondary font-semibold' : 'text-on-surface-variant'
+                                }`}>
                                     {pageNum}
                                 </span>
 
-                                {/* Match count badge (bottom-right corner) */}
+                                {/* Match Count */}
                                 {hasMatch && (
-                                    <span
-                                        style={{
-                                            position: 'absolute',
-                                            bottom: '2px',
-                                            right: '2px',
-                                            fontSize: '7px',
-                                            fontFamily: 'monospace',
-                                            fontWeight: 700,
-                                            backgroundColor: color,
-                                            color: '#fff',
-                                            borderRadius: '2px',
-                                            padding: '0 2px',
-                                            lineHeight: '10px',
-                                            zIndex: 2,
-                                            userSelect: 'none',
-                                        }}
-                                    >
+                                    <span className={`relative z-10 text-[9px] font-mono tabular-nums self-end font-semibold ${tint.text}`}>
                                         {matchCount}
                                     </span>
                                 )}
@@ -162,6 +106,27 @@ export default function Heatmap({ pages }) {
                     })}
                 </div>
             </div>
+
+            {/* Quiet Density Legend */}
+            <div className="flex items-center justify-between text-[10px] text-on-surface-variant pt-1 border-t border-ghost">
+                <div className="flex items-center space-x-1.5">
+                    <span className="w-2 h-2 rounded-xs bg-surface-container-high border border-ghost"></span>
+                    <span>Clean</span>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                    <span className="w-2 h-2 rounded-xs bg-amber-500/60"></span>
+                    <span>Low</span>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                    <span className="w-2 h-2 rounded-xs bg-orange-500/70"></span>
+                    <span>Moderate</span>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                    <span className="w-2 h-2 rounded-xs bg-rose-500/80"></span>
+                    <span>High</span>
+                </div>
+            </div>
         </div>
     );
 }
+

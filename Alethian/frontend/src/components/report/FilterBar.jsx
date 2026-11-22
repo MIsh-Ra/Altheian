@@ -1,70 +1,92 @@
 import { useReportStore } from '../../stores/reportStore';
+import { Check } from 'lucide-react';
 
 export default function FilterBar() {
     const { filterTypes, toggleFilterType } = useReportStore();
 
     return (
-        <div className="flex flex-col space-y-4">
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-on-surface">Filter Vectors</h3>
-            <div className="space-y-3">
-                <label className="flex items-center cursor-pointer group">
+        <div className="space-y-3">
+            <h3 className="text-xs font-medium text-on-surface">Filter matches</h3>
+            <div className="space-y-2">
+                {/* Archival exact */}
+                <label className="flex items-center cursor-pointer group text-xs text-on-surface-variant hover:text-on-surface transition-colors select-none">
                     <input 
                         type="checkbox" 
                         checked={filterTypes.internal_exact} 
                         onChange={() => toggleFilterType('internal_exact')} 
                         className="sr-only"
                     />
-                    <div className={`w-4 h-4 border flex items-center justify-center transition-colors ${filterTypes.internal_exact ? 'bg-error border-error shadow-ambient' : 'border-ghost bg-surface-container-highest group-hover:border-error/50'}`}>
-                        {filterTypes.internal_exact && <div className="w-1.5 h-1.5 bg-on-error" />}
+                    <div className={`w-3.5 h-3.5 rounded-xs border flex items-center justify-center transition-colors mr-2.5 ${
+                        filterTypes.internal_exact
+                            ? 'bg-rose-600 border-rose-600 text-white'
+                            : 'border-ghost bg-surface-container group-hover:border-outline'
+                    }`}>
+                        {filterTypes.internal_exact && <Check className="w-2.5 h-2.5" strokeWidth={3} />}
                     </div>
-                    <span className="ml-3 text-xs font-mono tracking-wide text-on-surface-variant group-hover:text-on-surface transition-colors uppercase">Archival Exact</span>
-                    <span className="ml-auto w-1.5 h-1.5 bg-error"></span>
+                    <span>Archival exact</span>
+                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-rose-500/80"></span>
                 </label>
 
-                <label className="flex items-center cursor-pointer group">
+                {/* Archival paraphrase */}
+                <label className="flex items-center cursor-pointer group text-xs text-on-surface-variant hover:text-on-surface transition-colors select-none">
                     <input 
                         type="checkbox" 
                         checked={filterTypes.internal_paraphrase} 
                         onChange={() => toggleFilterType('internal_paraphrase')} 
                         className="sr-only"
                     />
-                    <div className={`w-4 h-4 border flex items-center justify-center transition-colors ${filterTypes.internal_paraphrase ? 'bg-tertiary-container border-tertiary-container shadow-ambient' : 'border-ghost bg-surface-container-highest group-hover:border-tertiary-container/50'}`}>
-                        {filterTypes.internal_paraphrase && <div className="w-1.5 h-1.5 bg-on-tertiary-container" />}
+                    <div className={`w-3.5 h-3.5 rounded-xs border flex items-center justify-center transition-colors mr-2.5 ${
+                        filterTypes.internal_paraphrase
+                            ? 'bg-amber-600 border-amber-600 text-white'
+                            : 'border-ghost bg-surface-container group-hover:border-outline'
+                    }`}>
+                        {filterTypes.internal_paraphrase && <Check className="w-2.5 h-2.5" strokeWidth={3} />}
                     </div>
-                    <span className="ml-3 text-xs font-mono tracking-wide text-on-surface-variant group-hover:text-on-surface transition-colors uppercase">Archival Paraphrase</span>
-                    <span className="ml-auto w-1.5 h-1.5 bg-tertiary-container"></span>
+                    <span>Archival paraphrase</span>
+                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-amber-500/80"></span>
                 </label>
 
-                <label className="flex items-center cursor-pointer group">
+                {/* Web Dragnet */}
+                <label className="flex items-center cursor-pointer group text-xs text-on-surface-variant hover:text-on-surface transition-colors select-none">
                     <input 
                         type="checkbox" 
                         checked={filterTypes.web} 
                         onChange={() => toggleFilterType('web')} 
+                        aria-label="Web Dragnet"
                         className="sr-only"
                     />
-                    <div className={`w-4 h-4 border flex items-center justify-center transition-colors ${filterTypes.web ? 'bg-primary border-primary shadow-ambient' : 'border-ghost bg-surface-container-highest group-hover:border-primary/50'}`}>
-                        {filterTypes.web && <div className="w-1.5 h-1.5 bg-on-primary" />}
+                    <div className={`w-3.5 h-3.5 rounded-xs border flex items-center justify-center transition-colors mr-2.5 ${
+                        filterTypes.web
+                            ? 'bg-secondary border-secondary text-white'
+                            : 'border-ghost bg-surface-container group-hover:border-outline'
+                    }`}>
+                        {filterTypes.web && <Check className="w-2.5 h-2.5" strokeWidth={3} />}
                     </div>
-                    <span className="ml-3 text-xs font-mono tracking-wide text-on-surface-variant group-hover:text-on-surface transition-colors uppercase">Web Dragnet</span>
-                    <span className="ml-auto w-1.5 h-1.5 bg-primary"></span>
+                    <span>Web Dragnet sources</span>
+                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-secondary"></span>
                 </label>
 
+                {/* Excluded matches */}
                 <div className="pt-2 border-t border-ghost">
-                    <label className="flex items-center cursor-pointer group">
+                    <label className="flex items-center cursor-pointer group text-xs text-on-surface-variant/80 hover:text-on-surface transition-colors select-none">
                         <input 
                             type="checkbox" 
                             checked={filterTypes.excluded} 
                             onChange={() => toggleFilterType('excluded')} 
                             className="sr-only"
                         />
-                        <div className={`w-4 h-4 border flex items-center justify-center transition-colors ${filterTypes.excluded ? 'bg-on-surface-variant border-on-surface-variant' : 'border-ghost bg-surface-container-highest group-hover:border-on-surface-variant/50'}`}>
-                            {filterTypes.excluded && <div className="w-1.5 h-1.5 bg-surface" />}
+                        <div className={`w-3.5 h-3.5 rounded-xs border flex items-center justify-center transition-colors mr-2.5 ${
+                            filterTypes.excluded
+                                ? 'bg-on-surface-variant border-on-surface-variant text-surface'
+                                : 'border-ghost bg-surface-container group-hover:border-outline'
+                        }`}>
+                            {filterTypes.excluded && <Check className="w-2.5 h-2.5" strokeWidth={3} />}
                         </div>
-                        <span className="ml-3 text-xs font-mono tracking-wide text-on-surface-variant group-hover:text-on-surface transition-colors uppercase italic opacity-70">Show Excluded</span>
-                        <span className="ml-auto w-1.5 h-1.5 bg-surface-container-highest border border-ghost"></span>
+                        <span>Show excluded matches</span>
                     </label>
                 </div>
             </div>
         </div>
     );
 }
+
