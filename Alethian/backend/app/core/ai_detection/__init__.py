@@ -1,6 +1,7 @@
-"""
-AI Detection Pipeline Core Package.
-Provides multi-stage preprocessing, tamper detection, and model routing.
+"""AI Detection Pipeline Core Package.
+
+Provides multi-stage preprocessing, tamper detection, Stage 1 zero-shot scoring (Binoculars, DNA-DetectLLM),
+and Stage 2 escalation & localization (Llama-3-8B IRM, DeBERTa, WCP-NOT change-point detection).
 """
 from app.core.ai_detection.preprocessor import (
     PreprocessResult,
