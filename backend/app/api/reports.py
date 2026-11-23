@@ -781,7 +781,7 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
     if dedup_sources:
         src_header = [["#", "Source Title & Reference", "Category", "Coverage", "Matches", "Affected Pages"]]
         src_rows = []
-        for i, (k, s) in enumerate(sorted(dedup_sources.values(), key=lambda x: -x["coverage_percent"])[:15]):
+        for i, s in enumerate(sorted(dedup_sources.values(), key=lambda x: -x["coverage_percent"])[:15]):
             pages_list = sorted(list(s["pages_affected"]))
             pages_str = ", ".join(str(p) for p in pages_list[:8])
             if len(pages_list) > 8:
