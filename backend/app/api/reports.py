@@ -667,37 +667,37 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
         ai_diag_data = [
             ["Metric", "Measured Value", "Reference Baseline", "Status"],
             [
-                "Binoculars Perplexity Ratio",
-                f"{ai_det.get('binoculars_ratio', 0.0):.4f}" if ai_det.get('binoculars_ratio') is not None else "N/A",
-                "Threshold: 0.9015",
-                "ELEVATED" if (ai_det.get('binoculars_ratio') or 0.0) >= 0.9015 else "NORMAL",
+                Paragraph("Binoculars Perplexity Ratio", body_bold),
+                Paragraph(f"{ai_det.get('binoculars_ratio', 0.0):.4f}" if ai_det.get('binoculars_ratio') is not None else "N/A", mono),
+                Paragraph("Threshold: 0.9015", body),
+                Paragraph("<font color='#ea580c'><b>ELEVATED</b></font>" if (ai_det.get('binoculars_ratio') or 0.0) >= 0.9015 else "<font color='#16a34a'><b>NORMAL</b></font>", body),
             ],
             [
-                "DNA-Detect Token Burstiness",
-                f"{ai_det.get('dna_detect_score', 0.0):.4f}" if ai_det.get('dna_detect_score') is not None else "N/A",
-                "Cross-token divergence",
-                "ANALYZED",
+                Paragraph("DNA-Detect Token Burstiness", body_bold),
+                Paragraph(f"{ai_det.get('dna_detect_score', 0.0):.4f}" if ai_det.get('dna_detect_score') is not None else "N/A", mono),
+                Paragraph("Cross-token divergence metric", body),
+                Paragraph("<b>ANALYZED</b>", body),
             ],
             [
-                "Multi-Stage Neural Verdict",
-                html.escape(str(ai_det.get("verdict") or "T0_HUMAN")),
-                "Observer: Qwen2.5-0.5B • Performer: Qwen2.5-0.5B-Instruct",
-                html.escape(str(ai_det.get("verdict_label") or "Human")),
+                Paragraph("Multi-Stage Neural Verdict", body_bold),
+                Paragraph(html.escape(str(ai_det.get("verdict") or "T0_HUMAN")), mono),
+                Paragraph("Observer: Qwen2.5-0.5B • Performer: Qwen2.5-0.5B-Instruct", body),
+                Paragraph(f"<b>{html.escape(str(ai_det.get('verdict_label') or 'Human'))}</b>", body),
             ],
             [
-                "Analyzed Prose Tokens",
-                f"{ai_det.get('prose_token_count', 0):,} tokens",
-                "Min threshold: 150 tokens",
-                "VALID",
+                Paragraph("Analyzed Prose Tokens", body_bold),
+                Paragraph(f"{ai_det.get('prose_token_count', 0):,} tokens", body),
+                Paragraph("Min threshold: 150 tokens", body),
+                Paragraph("<b>VALID</b>", body),
             ],
             [
-                "Neural Inference Hardware",
-                f"{ai_det.get('latency_ms', 0):.0f} ms latency",
-                "NVIDIA Tesla V100 GPU (SDPA FP16)",
-                "OPERATIONAL",
+                Paragraph("Neural Inference Hardware", body_bold),
+                Paragraph(f"{ai_det.get('latency_ms', 0):.0f} ms latency", body),
+                Paragraph("NVIDIA Tesla V100 GPU (SDPA FP16)", body),
+                Paragraph("<b>OPERATIONAL</b>", body),
             ],
         ]
-        ai_table = Table(ai_diag_data, colWidths=[55 * mm, 35 * mm, 55 * mm, 35 * mm])
+        ai_table = Table(ai_diag_data, colWidths=[48 * mm, 32 * mm, 66 * mm, 34 * mm])
         ai_table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), DARK),
             ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
