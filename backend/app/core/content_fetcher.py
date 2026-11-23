@@ -5,7 +5,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from sentence_transformers import util as st_util
+try:
+    from sentence_transformers import util as st_util
+except ImportError:
+    st_util = None
 from app.core.embeddings import get_model
 
 def fetch_page_text(url, timeout=None):

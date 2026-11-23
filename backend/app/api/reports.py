@@ -570,17 +570,42 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
     story.append(score_card_container)
     story.append(Spacer(1, 3.5 * mm))
 
-    # ── SELF-SUBMISSION CALLOUT IF APPLICABLE ─────────────────────────────────
-    if excluded_count > 0:
-        callout_data = [[
+    # ── EXCLUSIONS & CITATION GROUNDING CALLOUTS ──────────────────────────────
+    raw_matches_list = report_data.get("matches", [])
+    citation_excluded_count = sum(1 for m in raw_matches_list if m.get("is_excluded") and "References" in (m.get("exclude_reason") or ""))
+    draft_excluded_count = sum(1 for m in raw_matches_list if m.get("is_excluded") and "Prior Submission" in (m.get("exclude_reason") or ""))
+    faculty_excluded_count = excluded_count - (citation_excluded_count + draft_excluded_count)
+
+    if citation_excluded_count > 0:
+        cite_callout_data = [[
             Paragraph(
-                f"<b>Author Draft Isolation Notice:</b> {excluded_count} segments match earlier draft(s) submitted by the same author. "
-                "In accordance with academic self-plagiarism isolation rules, these segments are cataloged in the Source Index but excluded from plagiarism penalties.",
-                ParagraphStyle("Notice", fontSize=7.5, leading=10, textColor=colors.HexColor("#0369a1"), fontName="Helvetica")
+                f"<b>Academic Citation Grounding Notice:</b> {citation_excluded_count} matched passage(s) correspond to sources explicitly documented in the document's references / bibliography. "
+                "In strict accordance with academic integrity standards, cited and grounded scholarship is validated and exempted from plagiarism penalties.",
+                ParagraphStyle("CiteNotice", fontSize=7.5, leading=10, textColor=colors.HexColor("#065f46"), fontName="Helvetica")
             )
         ]]
-        callout_table = Table(callout_data, colWidths=[USABLE_W])
-        callout_table.setStyle(TableStyle([
+        cite_table = Table(cite_callout_data, colWidths=[USABLE_W])
+        cite_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ecfdf5")),
+            ("BOX", (0, 0), (-1, -1), 0.8, colors.HexColor("#a7f3d0")),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        story.append(cite_table)
+        story.append(Spacer(1, 2.5 * mm))
+
+    if draft_excluded_count > 0:
+        draft_callout_data = [[
+            Paragraph(
+                f"<b>Author Draft Isolation Notice:</b> {draft_excluded_count} segment(s) match earlier draft(s) submitted by the same author. "
+                "In accordance with academic self-plagiarism isolation rules, these segments are cataloged in the Source Index but excluded from plagiarism penalties.",
+                ParagraphStyle("DraftNotice", fontSize=7.5, leading=10, textColor=colors.HexColor("#0369a1"), fontName="Helvetica")
+            )
+        ]]
+        draft_table = Table(draft_callout_data, colWidths=[USABLE_W])
+        draft_table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f0f9ff")),
             ("BOX", (0, 0), (-1, -1), 0.8, colors.HexColor("#bae6fd")),
             ("TOPPADDING", (0, 0), (-1, -1), 3),
@@ -588,8 +613,8 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
             ("LEFTPADDING", (0, 0), (-1, -1), 6),
             ("RIGHTPADDING", (0, 0), (-1, -1), 6),
         ]))
-        story.append(callout_table)
-        story.append(Spacer(1, 3 * mm))
+        story.append(draft_table)
+        story.append(Spacer(1, 2.5 * mm))
 
     # ── ARCHIVE CORPUS & PLAGIARISM STATISTICS ──────────────────────────────
     int_pct = scores.get("internal_contribution", 0)

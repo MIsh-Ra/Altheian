@@ -31,16 +31,43 @@ export default function MatchCard({ match, onUpdate }) {
     };
 
     if (match.is_excluded) {
+        const isCitationGrounded = match.exclude_reason?.includes('References') || match.is_citation_grounded;
+        const isDraft = match.exclude_reason?.includes('Prior Submission');
+
         return (
-            <div className="p-3 bg-surface-container-low border border-ghost rounded-sm opacity-60 hover:opacity-100 transition-opacity flex justify-between items-center text-xs">
-                <span className="text-on-surface-variant font-mono line-through">Excluded match (Page {match.submitted_page})</span>
-                <button
-                    onClick={handleRestore}
-                    className="inline-flex items-center space-x-1 text-secondary font-medium hover:underline text-xs"
-                >
-                    <RotateCcw className="w-3 h-3" />
-                    <span>RESTORE</span>
-                </button>
+            <div className={`p-3 rounded-sm border text-xs transition-opacity ${
+                isCitationGrounded
+                    ? 'bg-emerald-500/5 border-emerald-500/30'
+                    : isDraft
+                    ? 'bg-sky-500/5 border-sky-500/30'
+                    : 'bg-surface-container-low border-ghost opacity-70 hover:opacity-100'
+            }`}>
+                <div className="flex justify-between items-center mb-1.5">
+                    <span className={`inline-flex items-center space-x-1 font-mono text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                        isCitationGrounded
+                            ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+                            : isDraft
+                            ? 'bg-sky-500/20 text-sky-700 dark:text-sky-300'
+                            : 'bg-surface-container-high text-on-surface-variant line-through'
+                    }`}>
+                        {isCitationGrounded ? 'Attributed reference' : isDraft ? 'Author draft' : 'Excluded match'}
+                    </span>
+                    <button
+                        onClick={handleRestore}
+                        className="inline-flex items-center space-x-1 text-secondary font-medium hover:underline text-xs"
+                    >
+                        <RotateCcw className="w-3 h-3" />
+                        <span>RESTORE</span>
+                    </button>
+                </div>
+
+                <p className="text-[11px] font-medium text-on-surface mb-1">
+                    {match.exclude_reason || `Excluded from penalty (Page ${match.submitted_page})`}
+                </p>
+
+                <p className="text-xs text-on-surface-variant font-serif line-clamp-2 pl-2 border-l border-ghost">
+                    "{match.submitted_text}"
+                </p>
             </div>
         );
     }

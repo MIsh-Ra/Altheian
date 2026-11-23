@@ -17,19 +17,27 @@ def get_model():
     if _model is None:
         with _lock:
             if _model is None:
-                from sentence_transformers import SentenceTransformer
-                logger.info("Loading SentenceTransformer model 'all-MiniLM-L6-v2'...")
-                _model = SentenceTransformer('all-MiniLM-L6-v2')
-                logger.info("Model loaded successfully.")
+                try:
+                    from sentence_transformers import SentenceTransformer
+                    logger.info("Loading SentenceTransformer model 'all-MiniLM-L6-v2'...")
+                    _model = SentenceTransformer('all-MiniLM-L6-v2')
+                    logger.info("Model loaded successfully.")
+                except ImportError:
+                    logger.warning("sentence_transformers not installed. Embeddings unavailable.")
+                    return None
     return _model
 
 def generate_embedding(text):
     """Generate embedding for a single text string."""
     model = get_model()
+    if model is None:
+        return []
     return model.encode(text, convert_to_tensor=False).tolist()
 
 def generate_embeddings_batch(texts):
     """Generate embeddings for a list of texts (batched, ~3-10x faster)."""
     model = get_model()
+    if model is None:
+        return [[] for _ in texts]
     from app.core.config import settings
     return model.encode(texts, batch_size=settings.EMBEDDING_BATCH_SIZE, convert_to_tensor=False).tolist()

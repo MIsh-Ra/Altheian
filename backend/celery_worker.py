@@ -183,12 +183,14 @@ def analyze_document(self, document_id: str, file_path: str):
         # --- Stage 3: Web Dragnet ---
         logger.info(f"[{document_id}] Stage: web_dragnet")
         broadcast_status("web_dragnet", 60, "Searching web sources...")
+        grobid_references = parsed.get("references", [])
         web_matches = run_dragnet(
             document_id,
             text,
             internal_matches,
             page_boundaries=page_boundaries,
             page_count=doc.page_count or 1,
+            grobid_references=grobid_references,
         )
 
         # --- Stage 4: Report Generation ---

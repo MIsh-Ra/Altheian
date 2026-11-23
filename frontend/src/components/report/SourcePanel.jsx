@@ -29,9 +29,9 @@ export default function SourcePanel({ sources }) {
             </div>
 
             <div className="space-y-2">
-                {sources.map((src, i) => {
                     const isSelected = selectedSourceId === src.id;
                     const isWeb = src.type === 'web';
+                    const isAttributed = (src.title || '').startsWith('[Attributed]');
                     const coverage = Math.round(src.coverage_percent || 0);
 
                     return (
@@ -47,7 +47,12 @@ export default function SourcePanel({ sources }) {
                             <div className="flex justify-between items-start mb-1.5">
                                 <span className="font-medium text-on-surface truncate pr-2 flex items-center space-x-1.5" title={src.title || src.domain}>
                                     {isWeb ? <Globe className="w-3.5 h-3.5 text-on-surface-variant flex-none" /> : <FileText className="w-3.5 h-3.5 text-on-surface-variant flex-none" />}
-                                    <span className="truncate">{src.title || src.domain || 'Source document'}</span>
+                                    {isAttributed && (
+                                        <span className="text-[9px] font-mono font-semibold uppercase px-1.5 py-0.5 bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded flex-none">
+                                            Cited
+                                        </span>
+                                    )}
+                                    <span className="truncate">{src.title ? src.title.replace(/^\[Attributed\]\s*/, '') : (src.domain || 'Source document')}</span>
                                 </span>
                                 <span className="font-mono tabular-nums font-semibold text-on-surface flex-none">
                                     {coverage}%

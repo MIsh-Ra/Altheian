@@ -8,6 +8,8 @@ from urllib.parse import urlparse
 
 from .content_fetcher import fetch_page_text, compare_snippets, analyze_coherence
 from .shingling import process_text_into_chunks
+from .citation_parser import has_citations
+from .bibliography_extractor import BibliographyIndex, build_bibliography_index
 
 logger = logging.getLogger(__name__)
 
@@ -159,11 +161,13 @@ def select_suspicious_chunks(text: str,
                               internal_matches: Optional[List[Dict[str, Any]]] = None,
                               page_boundaries: Optional[List[tuple]] = None,
                               page_count: int = 1,
-                              max_queries: Optional[int] = None) -> List[Dict[str, Any]]:
+                              max_queries: Optional[int] = None,
+                              skip_cited_chunks: bool = True) -> List[Dict[str, Any]]:
     """
     Select chunks suitable for web search:
     - Long enough (>= MIN_CHUNK_WORDS)
     - NOT already internally matched (FR-3.1)
+    - NOT already academically cited / referenced (Citation-Aware Guard)
     - Ranked by length; top N selected
     """
     from app.core.config import settings
@@ -191,6 +195,14 @@ def select_suspicious_chunks(text: str,
             logger.debug(f"Skipping internally-matched chunk at char {c.get('char_start')}")
             continue
 
+        # Citation-Aware Shield: Skip chunks with in-text academic citations
+        if skip_cited_chunks and has_citations(c['text']):
+            logger.info(
+                f"Web Dragnet Shield: Skipping cited chunk at page {c.get('page', 1)} "
+                f"char {c.get('char_start', 0)} (academic citation markers detected)."
+            )
+            continue
+
         suspicious.append((len(words), c))
 
     # Rank by length (longer = better search target)
@@ -202,21 +214,30 @@ def run_dragnet(document_id: str,
                 text: str,
                 internal_matches: Optional[List[Dict[str, Any]]] = None,
                 page_boundaries: Optional[List[tuple]] = None,
-                page_count: int = 1) -> List[Dict[str, Any]]:
+                page_count: int = 1,
+                biblio_index: Optional[BibliographyIndex] = None,
+                grobid_references: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
     """
     Orchestrator for the Web Dragnet Engine.
-    Uses search result snippets directly instead of full-page fetching to avoid robots.txt blocks.
-    Deduplicates matches by submitted_text so the same chunk doesn't appear multiple times.
+    - Filters out academically-cited text from search dispatch.
+    - Grounds search result candidates against document's bibliography (Grobid / text references).
+    - Exempts bibliography-grounded sources from plagiarism penalties.
+    - Discards commercial / financial homonym collisions.
+    - Deduplicates matches by submitted_text so the same chunk doesn't appear multiple times.
     """
+    if biblio_index is None:
+        biblio_index = build_bibliography_index(grobid_references=grobid_references, full_text=text)
+
     chunks_to_search = select_suspicious_chunks(
         text,
         internal_matches=internal_matches,
         page_boundaries=page_boundaries,
-        page_count=page_count
+        page_count=page_count,
+        skip_cited_chunks=True
     )
 
-    logger.info(f"Web Dragnet: selected {len(chunks_to_search)} suspicious chunks "
-                f"(after filtering {len(internal_matches or [])} internal matches).")
+    logger.info(f"Web Dragnet: selected {len(chunks_to_search)} unsourced suspicious chunks "
+                f"(after filtering {len(internal_matches or [])} internal matches and cited passages).")
 
     from app.core.config import settings
     client = SerperClient()
@@ -241,6 +262,26 @@ def run_dragnet(document_id: str,
             if not url:
                 continue
 
+            # Grounding check: is this candidate already documented in the paper's bibliography?
+            matched_ref = biblio_index.is_reference_match(
+                candidate_url=url,
+                candidate_title=title,
+                candidate_snippet=snippet
+            )
+            is_grounded_citation = matched_ref is not None
+
+            # Commercial & Financial Homonym Guard:
+            # Reject matches from finance/ecommerce/retail if score is low or homonym collision
+            if not is_grounded_citation:
+                domain_lower = urlparse(url).netloc.lower()
+                commercial_indicators = [
+                    "finance.yahoo.com", "amazon.", "ebay.", "walmart.", "aliexpress.",
+                    "tripadvisor.", "marketwatch.com", "bloomberg.com/quote", "investing.com"
+                ]
+                if any(ind in domain_lower for ind in commercial_indicators):
+                    logger.debug(f"Web Dragnet: discarding commercial homonym collision: {url}")
+                    continue
+
             # Use snippet directly (avoids robots.txt / JS-heavy pages)
             # Only fetch the full page if the snippet is too short to compare
             source_text = snippet
@@ -257,12 +298,28 @@ def run_dragnet(document_id: str,
 
             if score > web_threshold:
                 domain = urlparse(url).netloc
+
+                # Grounded reference configuration:
+                # If the source is in the document's references, exclude from plagiarism penalty
+                is_excluded = is_grounded_citation
+                exclude_reason = f"Documented in References ({matched_ref.label})" if is_grounded_citation else None
+                source_display_title = (
+                    f"[Attributed] {matched_ref.title or title or domain}"
+                    if is_grounded_citation else (title or domain)
+                )
+
+                if is_grounded_citation:
+                    logger.info(
+                        f"Web Dragnet: Citation Grounded match found for {url} -> "
+                        f"Matches Reference {matched_ref.label}. Excluded from plagiarism penalty."
+                    )
+
                 match = {
                     "type": "web",
                     "url": url,
                     "domain": domain,
                     "score": score,
-                    "source_title": title or domain,
+                    "source_title": source_display_title,
                     "source_text": source_text[:getattr(settings, 'SNIPPET_MAX_CHARS', 2000)],
                     "submitted_text": chunk_text,
                     "similarity_score": round(score * 100, 2),
@@ -271,6 +328,10 @@ def run_dragnet(document_id: str,
                     "submitted_start_char": chunk_dict.get("char_start", 0),
                     "submitted_end_char": chunk_dict.get("char_end", 0),
                     "is_coherent": False,
+                    "is_citation_grounded": is_grounded_citation,
+                    "is_excluded": is_excluded,
+                    "exclude_reason": exclude_reason,
+                    "citation_label": matched_ref.label if matched_ref else None,
                 }
 
                 # Keep only the highest-scoring web match per submitted chunk
