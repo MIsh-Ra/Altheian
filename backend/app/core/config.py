@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     SERPER_API_KEY: str = ""
     SERPER_BACKUP_KEY: str = ""
     DRAGNET_BYPASS_CACHE: bool = False
+    ENABLE_INGESTION_CACHE: bool = False
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
     QDRANT_HOST: str = "localhost"

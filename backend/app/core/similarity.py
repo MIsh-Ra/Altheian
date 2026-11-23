@@ -77,6 +77,31 @@ def run_similarity(document_id, text, db_session, page_boundaries=None, page_cou
     
     matched_results = []
     exact_seen = set()  # Track (source_doc_id, submitted_char_start) from exact pass
+
+    # ── Exclude Repeated Documents & Prior Drafts by Same Author ─────────────
+    # Ensures in-memory vector plagiarism detection does not match against
+    # repeated uploads of the same document or identical file hashes.
+    excluded_doc_ids = {document_id}
+    if db_session and document_id:
+        try:
+            from app.db.models import Document
+            from sqlalchemy import or_
+            current_doc = db_session.query(Document).filter(Document.id == document_id).first()
+            if current_doc:
+                filters = []
+                if current_doc.file_hash:
+                    filters.append(Document.file_hash == current_doc.file_hash)
+                if current_doc.user_id and current_doc.filename:
+                    filters.append((Document.user_id == current_doc.user_id) & (Document.filename == current_doc.filename))
+                if current_doc.user_id and current_doc.title and current_doc.title not in ["Unknown Title", "Submitted Document", "Archive Document", ""]:
+                    filters.append((Document.user_id == current_doc.user_id) & (Document.title == current_doc.title))
+                
+                if filters:
+                    prior_docs = db_session.query(Document.id).filter(or_(*filters)).all()
+                    for (p_id,) in prior_docs:
+                        excluded_doc_ids.add(p_id)
+        except Exception as e:
+            logger.warning(f"Error querying repeated documents for exclusion: {e}")
     
     for chunk in chunks:
         qdrant = _get_qdrant()
@@ -84,7 +109,7 @@ def run_similarity(document_id, text, db_session, page_boundaries=None, page_cou
         exact_matches = qdrant.search_exact(chunk["embedding"])
         for m in exact_matches:
             payload = m.payload
-            if payload and payload.get("document_id") != document_id:
+            if payload and payload.get("document_id") not in excluded_doc_ids:
                 # We can skip SequenceMatcher here if threshold is high enough, but let's double check it purely
                 sm = difflib.SequenceMatcher(None, chunk["text"], payload.get("text", ""))
                 src_doc_id = payload.get("document_id")
@@ -108,7 +133,7 @@ def run_similarity(document_id, text, db_session, page_boundaries=None, page_cou
         semantic_matches = qdrant.search_semantic(chunk["embedding"])
         for m in semantic_matches:
              payload = m.payload
-             if payload and payload.get("document_id") != document_id:
+             if payload and payload.get("document_id") not in excluded_doc_ids:
                  src_doc_id = payload.get("document_id")
                  # Skip if this (source, submitted_chunk) pair was already found in exact pass
                  if (src_doc_id, chunk["char_start"]) in exact_seen:

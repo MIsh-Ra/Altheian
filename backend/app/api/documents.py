@@ -74,9 +74,9 @@ async def upload_document(
         from app.core.dedup_cache import compute_file_hash, find_cached_document, clone_cached_document
         file_hash = compute_file_hash(content)
 
-        # Ingestion Deduplication Cache: If exact identical PDF was already processed by this user,
-        # return an instant cloned audit without redundant Grobid parsing, Qdrant bloat, or GPU compute.
-        cached_match = find_cached_document(db, file_hash)
+        # Ingestion Deduplication Cache: Only reuse if ENABLE_INGESTION_CACHE is enabled
+        enable_ingestion_cache = getattr(settings, "ENABLE_INGESTION_CACHE", False)
+        cached_match = find_cached_document(db, file_hash) if enable_ingestion_cache else None
         if cached_match and cached_match.user_id == current_user.id:
             logger.info(f"Ingestion cache hit: reusing completed analysis from {cached_match.id} for user {current_user.id}")
             new_doc_id = str(uuid.uuid4())
