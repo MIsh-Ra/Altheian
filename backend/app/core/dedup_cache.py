@@ -35,7 +35,7 @@ def find_cached_document(db: Session, file_hash: str) -> Optional[Document]:
         db.query(Document)
         .filter(
             Document.file_hash == file_hash,
-            Document.status == DocumentStatus.completed,
+            Document.status == DocumentStatus.complete,
             Document.content.isnot(None),
         )
         .order_by(Document.upload_date.desc())
@@ -68,7 +68,7 @@ def clone_cached_document(
         user_id=user_id,
         file_hash=source_doc.file_hash,
         upload_date=start_time,
-        status=DocumentStatus.completed,
+        status=DocumentStatus.complete,
         content=source_doc.content,
         page_count=source_doc.page_count,
         page_texts=source_doc.page_texts,
