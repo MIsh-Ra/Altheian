@@ -6,19 +6,24 @@ import requests
 from typing import List, Dict, Any, Optional
 from urllib.parse import urlparse
 
-from .content_fetcher import fetch_page_text, compare_snippets, analyze_coherence
+from .content_fetcher import fetch_page_text, compare_snippets, analyze_coherence, verify_web_match
 from .shingling import process_text_into_chunks
 from .citation_parser import has_citations
 from .bibliography_extractor import BibliographyIndex, build_bibliography_index
+from .common_knowledge_filter import should_skip_from_web_search
 
 logger = logging.getLogger(__name__)
 
 
 class SerperClient:
-    """Search client with snippets-first approach, Redis caching, dual Serper/SerpApi gateway, ddgs fallback."""
+    """Search client with snippets-first approach, primary + backup Serper key rotation, Redis caching, ddgs fallback."""
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, backup_api_key: Optional[str] = None, bypass_cache: bool = False):
         import redis
+        from app.core.config import settings
+
+        self.bypass_cache = bypass_cache or getattr(settings, "DRAGNET_BYPASS_CACHE", False)
+
         try:
             self.cache = redis.Redis(
                 host=os.getenv("REDIS_HOST", "localhost"),
@@ -33,14 +38,28 @@ class SerperClient:
         if self.cache:
             try:
                 val = self.cache.get("config:serper_api_key")
-                if isinstance(val, str):
-                    redis_key = val
+                if isinstance(val, str) and val.strip():
+                    redis_key = val.strip()
             except Exception:
                 pass
 
-        self.api_key = api_key or redis_key or os.getenv("SERPAPI_API_KEY") or os.getenv("SERPER_API_KEY", "")
-        search_url = os.getenv("SEARCH_ENGINE_URL", "")
+        # Primary and backup key resolution
+        self.primary_key = (
+            api_key
+            or os.getenv("SERPER_API_KEY")
+            or getattr(settings, "SERPER_API_KEY", "")
+            or redis_key
+            or ""
+        )
+        self.backup_key = (
+            backup_api_key
+            or os.getenv("SERPER_BACKUP_KEY")
+            or getattr(settings, "SERPER_BACKUP_KEY", "")
+            or ""
+        )
+        self.api_key = self.primary_key  # default active
 
+        search_url = os.getenv("SEARCH_ENGINE_URL", "")
         # Auto-detect SerpApi vs Serper.dev
         if "serpapi.com" in search_url.lower() or (self.api_key and "serpapi" in self.api_key.lower()) or os.getenv("SERPAPI_API_KEY"):
             self.engine_type = "serpapi"
@@ -49,14 +68,48 @@ class SerperClient:
             self.engine_type = "serper"
             self.endpoint = "https://google.serper.dev/search"
 
+    def _call_serper(self, query: str, num_results: int, key: str) -> Optional[List[Dict[str, str]]]:
+        from app.core.config import settings
+        if not key or key in ("", "PASTE_YOUR_KEY_HERE"):
+            return None
+        try:
+            if self.engine_type == "serpapi":
+                response = requests.get(
+                    self.endpoint,
+                    params={"q": query, "num": num_results, "api_key": key, "engine": "google"},
+                    timeout=settings.SERPER_TIMEOUT
+                )
+            else:
+                response = requests.post(
+                    self.endpoint,
+                    headers={'X-API-KEY': key, 'Content-Type': 'application/json'},
+                    data=json.dumps({"q": query, "num": num_results}),
+                    timeout=settings.SERPER_TIMEOUT
+                )
+            if response.status_code == 200:
+                data = response.json()
+                results = []
+                items = data.get("organic_results", []) if self.engine_type == "serpapi" else data.get("organic", [])
+                for item in items:
+                    url = item.get("link", "")
+                    title = item.get("title", "")
+                    snippet = item.get("snippet", "")
+                    if url:
+                        results.append({"url": url, "title": title, "snippet": snippet})
+                return results
+            else:
+                logger.warning(f"Serper API key returned status {response.status_code}: {response.text[:200]}")
+                return None
+        except Exception as e:
+            logger.warning(f"{self.engine_type} API failed with key: {e}")
+            return None
+
     def search(self, query: str, num_results: int = 5) -> List[Dict[str, str]]:
         """
-        Returns list of {url, snippet, title} dicts.
-        Uses snippets directly to avoid robots.txt/scraping blocks.
+        Returns list of {url, snippet, title} dicts with primary + backup rotation and ddgs fallback.
         """
-        from app.core.config import settings
         cache_key = f"serper_snippets:{query}"
-        if self.cache:
+        if not self.bypass_cache and self.cache:
             try:
                 cached = self.cache.get(cache_key)
                 if cached:
@@ -64,48 +117,24 @@ class SerperClient:
             except Exception:
                 pass
 
-        results = []
-        if self.api_key and self.api_key not in ("", "PASTE_YOUR_KEY_HERE"):
-            try:
-                if self.engine_type == "serpapi":
-                    response = requests.get(
-                        self.endpoint,
-                        params={"q": query, "num": num_results, "api_key": self.api_key, "engine": "google"},
-                        timeout=settings.SERPER_TIMEOUT
-                    )
-                    if response.status_code == 200:
-                        data = response.json()
-                        for item in data.get("organic_results", []):
-                            results.append({
-                                "url": item.get("link", ""),
-                                "title": item.get("title", ""),
-                                "snippet": item.get("snippet", ""),
-                            })
-                else:
-                    response = requests.post(
-                        self.endpoint,
-                        headers={'X-API-KEY': self.api_key, 'Content-Type': 'application/json'},
-                        data=json.dumps({"q": query, "num": num_results}),
-                        timeout=settings.SERPER_TIMEOUT
-                    )
-                    if response.status_code == 200:
-                        data = response.json()
-                        for item in data.get("organic", []):
-                            results.append({
-                                "url": item.get("link", ""),
-                                "title": item.get("title", ""),
-                                "snippet": item.get("snippet", ""),
-                            })
-            except Exception as e:
-                logger.warning(f"{self.engine_type} API failed: {e}")
+        results = None
+        # Tier 1: Try Primary Key
+        if self.primary_key:
+            results = self._call_serper(query, num_results, self.primary_key)
 
-        # DuckDuckGo fallback using ddgs (renamed from duckduckgo_search)
+        # Tier 2: Try Backup Key if Primary failed or was depleted
+        if not results and self.backup_key and self.backup_key != self.primary_key:
+            logger.info("Failing over to backup Serper API key...")
+            results = self._call_serper(query, num_results, self.backup_key)
+
+        # Tier 3: DuckDuckGo fallback
         if not results:
+            results = []
             try:
                 try:
                     from ddgs import DDGS
                 except ImportError:
-                    from duckduckgo_search import DDGS  # legacy name
+                    from duckduckgo_search import DDGS
                 ddgs = DDGS()
                 for r in ddgs.text(query, max_results=num_results) or []:
                     results.append({
@@ -116,12 +145,13 @@ class SerperClient:
             except Exception as e:
                 logger.warning(f"DuckDuckGo fallback failed: {e}")
 
-        if self.cache and results:
+        if not self.bypass_cache and self.cache and results:
             try:
                 self.cache.setex(cache_key, 86400, json.dumps(results))
             except Exception:
                 pass
-        return results
+
+        return results or []
 
 
 def _build_matched_char_ranges(internal_matches: List[Dict[str, Any]]) -> List[tuple]:
@@ -203,6 +233,15 @@ def select_suspicious_chunks(text: str,
             )
             continue
 
+        # Common Domain Knowledge & Polyglot / Math / Boilerplate Filter:
+        should_skip, skip_reason = should_skip_from_web_search(c['text'])
+        if should_skip:
+            logger.info(
+                f"Web Dragnet Filter: Skipping chunk at page {c.get('page', 1)} "
+                f"char {c.get('char_start', 0)} ({skip_reason})."
+            )
+            continue
+
         suspicious.append((len(words), c))
 
     # Rank by length (longer = better search target)
@@ -219,8 +258,9 @@ def run_dragnet(document_id: str,
                 grobid_references: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
     """
     Orchestrator for the Web Dragnet Engine.
-    - Filters out academically-cited text from search dispatch.
+    - Filters out academically-cited text and common domain knowledge from search dispatch.
     - Grounds search result candidates against document's bibliography (Grobid / text references).
+    - Verifies candidate snippets via Two-Stage Hybrid Precision Gate (N-gram verbatim run >= 8 or lexical >= 0.50).
     - Exempts bibliography-grounded sources from plagiarism penalties.
     - Discards commercial / financial homonym collisions.
     - Deduplicates matches by submitted_text so the same chunk doesn't appear multiple times.
@@ -293,10 +333,18 @@ def run_dragnet(document_id: str,
             if not source_text:
                 continue
 
-            web_threshold = getattr(settings, 'WEB_MATCH_THRESHOLD', 0.15)
-            score = compare_snippets(chunk_text, source_text)
+            # Two-Stage Hybrid Precision Gate (Verbatim N-gram Run >= 8 or Lexical Ratio >= 0.50 or Paraphrase >= 0.70)
+            verification = verify_web_match(chunk_text, source_text)
+            if not verification["is_match"] and not is_grounded_citation:
+                logger.debug(
+                    f"Web Dragnet: Candidate rejected for {url} -> {verification['rejection_reason']}"
+                )
+                continue
 
-            if score > web_threshold:
+            score = verification["score"]
+            web_threshold = getattr(settings, 'WEB_MATCH_THRESHOLD', 0.50)
+
+            if score >= web_threshold or is_grounded_citation:
                 domain = urlparse(url).netloc
 
                 # Grounded reference configuration:
@@ -332,6 +380,8 @@ def run_dragnet(document_id: str,
                     "is_excluded": is_excluded,
                     "exclude_reason": exclude_reason,
                     "citation_label": matched_ref.label if matched_ref else None,
+                    "match_type": verification.get("match_type", "web"),
+                    "verbatim_run": verification.get("verbatim_run", 0),
                 }
 
                 # Keep only the highest-scoring web match per submitted chunk

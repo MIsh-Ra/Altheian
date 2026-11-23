@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     JWT_EXPIRY_MINUTES: int = 1440
     
     SERPER_API_KEY: str = ""
+    SERPER_BACKUP_KEY: str = ""
+    DRAGNET_BYPASS_CACHE: bool = False
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
     QDRANT_HOST: str = "localhost"
@@ -30,7 +32,10 @@ class Settings(BaseSettings):
     SIMILARITY_EXACT_THRESHOLD: float = 0.95
     SIMILARITY_SEMANTIC_THRESHOLD: float = 0.85
     SIMILARITY_EXACT_RATIO: float = 0.9  # SequenceMatcher ratio to distinguish exact vs paraphrase
-    WEB_MATCH_THRESHOLD: float = 0.15
+    WEB_MATCH_THRESHOLD: float = 0.50
+    MIN_VERBATIM_RUN_WORDS: int = 8
+    WEB_SEMANTIC_PARAPHRASE_THRESHOLD: float = 0.70
+    WEB_LEXICAL_RATIO_THRESHOLD: float = 0.50
     SHINGLING_WORDS_PER_PAGE: int = 500
     DRAGNET_QUERY_WORDS: int = 25
     SHINGLING_CHARS_PER_PAGE_ESTIMATE: int = 4000

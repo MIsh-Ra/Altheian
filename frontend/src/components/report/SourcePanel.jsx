@@ -1,5 +1,5 @@
 import { useReportStore } from '../../stores/reportStore';
-import { Globe, FileText, X } from 'lucide-react';
+import { Globe, FileText, X, ExternalLink } from 'lucide-react';
 
 export default function SourcePanel({ sources }) {
     const { selectedSourceId, setSelectedSource } = useReportStore();
@@ -29,6 +29,7 @@ export default function SourcePanel({ sources }) {
             </div>
 
             <div className="space-y-2">
+                {sources.map(src => {
                     const isSelected = selectedSourceId === src.id;
                     const isWeb = src.type === 'web';
                     const isAttributed = (src.title || '').startsWith('[Attributed]');
@@ -59,8 +60,21 @@ export default function SourcePanel({ sources }) {
                                 </span>
                             </div>
 
-                            <div className="text-[10px] font-mono text-on-surface-variant mb-2 truncate">
-                                {isWeb ? src.domain : 'Internal repository'}
+                            <div className="text-[10px] font-mono text-on-surface-variant mb-2 truncate flex items-center justify-between">
+                                <span className="truncate">{isWeb ? src.domain : 'Internal repository'}</span>
+                                {isWeb && src.url && (
+                                    <a
+                                        href={src.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="inline-flex items-center space-x-1 text-secondary hover:underline pl-2 flex-none"
+                                        title={src.url}
+                                    >
+                                        <span>Visit source</span>
+                                        <ExternalLink className="w-2.5 h-2.5" />
+                                    </a>
+                                )}
                             </div>
 
                             {/* Quiet progress bar */}
@@ -77,4 +91,3 @@ export default function SourcePanel({ sources }) {
         </div>
     );
 }
-

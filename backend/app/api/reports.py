@@ -793,12 +793,15 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
         if key not in dedup_sources:
             dedup_sources[key] = {
                 "title": s.get("title") or s.get("domain") or "Unknown",
+                "url": s.get("url") or "",
                 "type": s.get("type", "internal").upper(),
                 "coverage_percent": s.get("coverage_percent") or 0.0,
                 "match_count": s.get("match_count") or 0,
                 "pages_affected": set(s.get("pages_affected") or []),
             }
         else:
+            if not dedup_sources[key].get("url") and s.get("url"):
+                dedup_sources[key]["url"] = s.get("url")
             dedup_sources[key]["match_count"] += (s.get("match_count") or 0)
             dedup_sources[key]["coverage_percent"] = max(dedup_sources[key]["coverage_percent"], s.get("coverage_percent") or 0.0)
             dedup_sources[key]["pages_affected"].update(s.get("pages_affected") or [])
@@ -811,9 +814,20 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
             pages_str = ", ".join(str(p) for p in pages_list[:8])
             if len(pages_list) > 8:
                 pages_str += "..."
+            
+            title_text = html.escape(s["title"])
+            if s.get("url"):
+                url_esc = html.escape(s["url"])
+                title_cell = Paragraph(
+                    f"{title_text}<br/><a href='{url_esc}' color='#2563eb'><font size='6.5'><u>{url_esc[:60]}</u></font></a>",
+                    body
+                )
+            else:
+                title_cell = Paragraph(title_text, body)
+
             src_rows.append([
                 str(i + 1),
-                Paragraph(html.escape(s["title"]), body),
+                title_cell,
                 s["type"],
                 f"{s['coverage_percent']:.1f}%",
                 str(s["match_count"]),
@@ -899,7 +913,8 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
 
             src_line = f"<b>Source:</b> {html.escape(src_name[:65])}"
             if src_url:
-                src_line += f" — <font color='#64748b'>{html.escape(src_url[:65])}</font>"
+                url_esc = html.escape(src_url)
+                src_line += f" — <a href='{url_esc}' color='#2563eb'><u>{html.escape(src_url[:65])}</u></a>"
             match_block.append(Paragraph(src_line, label))
             match_block.append(Spacer(1, 1 * mm))
 

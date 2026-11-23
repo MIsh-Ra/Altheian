@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useReportStore } from '../../stores/reportStore';
-import { FileText, Globe, MessageSquare, EyeOff, RotateCcw } from 'lucide-react';
+import { FileText, Globe, MessageSquare, EyeOff, RotateCcw, ExternalLink } from 'lucide-react';
 import Client from '../../api/client';
 import { useParams } from 'react-router-dom';
 
@@ -104,6 +104,22 @@ export default function MatchCard({ match, onUpdate }) {
             <p className="text-xs text-on-surface-variant font-serif leading-relaxed line-clamp-3 mb-3 pl-2 border-l border-ghost">
                 "{match.submitted_text}"
             </p>
+
+            {(match.url || match.source?.url) && (
+                <div className="mb-3">
+                    <a
+                        href={match.url || match.source?.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center space-x-1.5 text-[11px] font-mono text-secondary hover:underline truncate max-w-full"
+                        title={match.url || match.source?.url}
+                    >
+                        <ExternalLink className="w-3 h-3 flex-none" />
+                        <span className="truncate">{match.source_title || match.source?.title || match.domain || (match.url || match.source?.url)}</span>
+                    </a>
+                </div>
+            )}
 
             <div className="flex items-center justify-between text-[11px] text-on-surface-variant font-mono pt-2 border-t border-ghost">
                 <span>PAGE {match.submitted_page}</span>
