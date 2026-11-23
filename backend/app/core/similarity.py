@@ -29,7 +29,7 @@ class QdrantManager:
                 vectors_config=VectorParams(size=384, distance=Distance.COSINE)
             )
 
-    def search_exact(self, embedding, limit=5, score_threshold=None):
+    def search_exact(self, embedding, limit=10, score_threshold=None, query_filter=None):
         """High-threshold search for exact matches."""
         if score_threshold is None:
             from app.core.config import settings
@@ -38,10 +38,11 @@ class QdrantManager:
             collection_name=self.collection_name,
             query_vector=embedding,
             limit=limit,
-            score_threshold=score_threshold
+            score_threshold=score_threshold,
+            query_filter=query_filter
         )
     
-    def search_semantic(self, embedding, limit=5, score_threshold=None):
+    def search_semantic(self, embedding, limit=10, score_threshold=None, query_filter=None):
         """Lower-threshold search for paraphrase matches."""
         if score_threshold is None:
             from app.core.config import settings
@@ -50,7 +51,8 @@ class QdrantManager:
             collection_name=self.collection_name,
             query_vector=embedding,
             limit=limit,
-            score_threshold=score_threshold
+            score_threshold=score_threshold,
+            query_filter=query_filter
         )
 
 # Lazy singleton — avoids crash if Qdrant is unreachable at import time
@@ -103,15 +105,26 @@ def run_similarity(document_id, text, db_session, page_boundaries=None, page_cou
                         excluded_doc_ids.add(p_id)
         except Exception as e:
             logger.warning(f"Error querying repeated documents for exclusion: {e}")
+
+    query_filter = None
+    if excluded_doc_ids:
+        from qdrant_client.models import Filter, FieldCondition, MatchAny
+        query_filter = Filter(
+            must_not=[
+                FieldCondition(
+                    key="document_id",
+                    match=MatchAny(any=list(excluded_doc_ids))
+                )
+            ]
+        )
     
+    qdrant = _get_qdrant()
     for chunk in chunks:
-        qdrant = _get_qdrant()
         # 1. Exact match search (high threshold)
-        exact_matches = qdrant.search_exact(chunk["embedding"])
+        exact_matches = qdrant.search_exact(chunk["embedding"], query_filter=query_filter)
         for m in exact_matches:
             payload = m.payload
             if payload and payload.get("document_id") not in excluded_doc_ids:
-                # We can skip SequenceMatcher here if threshold is high enough, but let's double check it purely
                 sm = difflib.SequenceMatcher(None, chunk["text"], payload.get("text", ""))
                 src_doc_id = payload.get("document_id")
                 exact_seen.add((src_doc_id, chunk["char_start"]))
@@ -131,7 +144,7 @@ def run_similarity(document_id, text, db_session, page_boundaries=None, page_cou
                 })
         
         # 2. Semantic search (lower threshold, excludes already-matched)
-        semantic_matches = qdrant.search_semantic(chunk["embedding"])
+        semantic_matches = qdrant.search_semantic(chunk["embedding"], query_filter=query_filter)
         for m in semantic_matches:
              payload = m.payload
              if payload and payload.get("document_id") not in excluded_doc_ids:

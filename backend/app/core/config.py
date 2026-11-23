@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     SHINGLING_WORDS_PER_PAGE: int = 500
     DRAGNET_QUERY_WORDS: int = 25
     SHINGLING_CHARS_PER_PAGE_ESTIMATE: int = 4000
-    SHINGLING_WINDOW_SENTENCES: int = 5
+    SHINGLING_WINDOW_SENTENCES: int = 3
     
     # Content fetcher constants
     FETCHER_WINDOW_SIZE: int = 200        # Words per comparison window for web pages

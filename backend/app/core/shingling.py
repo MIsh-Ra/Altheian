@@ -12,27 +12,47 @@ def _count_real_words(text: str) -> int:
     return sum(1 for tok in text.split() if re.search(r'[A-Za-z]', tok))
 
 def create_sliding_windows(text, window_size=None):
-    """Reuses sliding-window approach from backup/text_processor.py"""
+    """Paragraph-aware sliding-window chunking.
+    
+    Prevents cross-boundary contamination by chunking strictly within paragraph boundaries.
+    Falls back to global sliding windows if the text is unformatted / single-paragraph.
+    """
     if not text:
         return []
 
     from app.core.config import settings
     if window_size is None:
-        window_size = getattr(settings, 'SHINGLING_WINDOW_SENTENCES', 5)
+        window_size = getattr(settings, 'SHINGLING_WINDOW_SENTENCES', 3)
 
-    text = " ".join(text.split())
-    # Split text by punctuation boundaries
-    sentences = re.split(r'(?<=[.!?]) +', text)
-    sentences = [s.strip() for s in sentences if s.strip()]
-    
+    raw_paragraphs = [p.strip() for p in re.split(r'\n\s*\n+', text) if p.strip()]
     windows = []
-    
-    if len(sentences) <= window_size:
-        return [text] if text else []
 
-    for i in range(len(sentences) - window_size + 1):
-        chunk = " ".join(sentences[i:i + window_size])
-        windows.append(chunk)
+    if len(raw_paragraphs) > 1:
+        for p in raw_paragraphs:
+            clean_p = " ".join(p.split())
+            p_sentences = [s.strip() for s in re.split(r'(?<=[.!?]) +', clean_p) if s.strip()]
+            if not p_sentences:
+                continue
+            if len(p_sentences) <= window_size:
+                if _count_real_words(clean_p) >= MIN_REAL_WORDS:
+                    windows.append(clean_p)
+            else:
+                for i in range(len(p_sentences) - window_size + 1):
+                    chunk = " ".join(p_sentences[i:i + window_size])
+                    if _count_real_words(chunk) >= MIN_REAL_WORDS:
+                        windows.append(chunk)
+    else:
+        text = " ".join(text.split())
+        sentences = [s.strip() for s in re.split(r'(?<=[.!?]) +', text) if s.strip()]
+        if len(sentences) <= window_size:
+            if text and _count_real_words(text) >= MIN_REAL_WORDS:
+                return [text]
+            return []
+
+        for i in range(len(sentences) - window_size + 1):
+            chunk = " ".join(sentences[i:i + window_size])
+            if _count_real_words(chunk) >= MIN_REAL_WORDS:
+                windows.append(chunk)
         
     return windows
 
