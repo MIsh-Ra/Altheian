@@ -96,6 +96,14 @@ class GrobidClient:
                         "text": "\n".join(page_bucket[pnum])
                     })
 
+            # Ensure extracted abstract from teiHeader is included in page 1 bucket
+            # so abstracts and front-matter sections are analyzed for plagiarism.
+            if abstract:
+                if 1 not in page_bucket:
+                    page_bucket[1] = []
+                if not page_bucket[1] or page_bucket[1][0] != abstract:
+                    page_bucket[1].insert(0, abstract)
+
             # Build page_texts with cumulative char offsets
             page_texts = []
             page_boundaries = []
