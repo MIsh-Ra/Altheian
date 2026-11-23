@@ -170,8 +170,13 @@ def select_suspicious_chunks(text: str,
     if max_queries is None:
         max_queries = settings.MAX_DRAGNET_SUSPICIOUS
 
-    # Build matched ranges from internal results for fast overlap check
-    matched_ranges = _build_matched_char_ranges(internal_matches or [])
+    # Filter out self-submissions and excluded matches so prior drafts don't suppress web search
+    active_internal_matches = [
+        m for m in (internal_matches or [])
+        if not m.get("is_self_submission") and not m.get("is_excluded")
+    ]
+    # Build matched ranges from active internal results for fast overlap check
+    matched_ranges = _build_matched_char_ranges(active_internal_matches)
 
     chunks = process_text_into_chunks(text, page_boundaries=page_boundaries, page_count=page_count)
     suspicious = []

@@ -5,6 +5,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 import redis
+import requests
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy import text
@@ -174,6 +175,72 @@ def check_system_health(db: Session = Depends(get_db)) -> HealthResponse:
         services["celery_ai_worker"] = ServiceStatus(
             status="down",
             details=f"Failed to inspect GPU worker: {str(e)[:120]}",
+        )
+
+    # 6. Web Dragnet Search Gateway Check
+    t0 = time.perf_counter()
+    try:
+        from app.core.web_dragnet import SerperClient
+        client = SerperClient()
+        engine_type = client.engine_type
+        api_key = client.api_key
+        has_key = bool(api_key and api_key not in ("", "PASTE_YOUR_KEY_HERE"))
+        
+        if has_key:
+            try:
+                # Fast check against the search endpoint
+                resp = requests.post(
+                    client.endpoint,
+                    headers={'X-API-KEY': api_key, 'Content-Type': 'application/json'},
+                    data='{"q":"ping","num":1}',
+                    timeout=2.5
+                ) if engine_type == "serper" else requests.get(
+                    client.endpoint,
+                    params={"q": "ping", "api_key": api_key, "num": 1},
+                    timeout=2.5
+                )
+                latency = round((time.perf_counter() - t0) * 1000.0, 2)
+                if resp.status_code == 200:
+                    services["web_dragnet"] = ServiceStatus(
+                        status="up",
+                        latency_ms=latency,
+                        details=f"Live search gateway ({engine_type}) operational",
+                        metadata={
+                            "engine": engine_type,
+                            "endpoint": client.endpoint,
+                            "api_key_configured": True,
+                            "masked_key": f"{api_key[:6]}...{api_key[-4:]}" if len(api_key) > 10 else "***",
+                        },
+                    )
+                else:
+                    services["web_dragnet"] = ServiceStatus(
+                        status="degraded",
+                        latency_ms=latency,
+                        details=f"{engine_type} returned HTTP {resp.status_code}; fallback ready",
+                        metadata={"engine": engine_type, "api_key_configured": True, "http_status": resp.status_code},
+                    )
+            except Exception as net_err:
+                latency = round((time.perf_counter() - t0) * 1000.0, 2)
+                services["web_dragnet"] = ServiceStatus(
+                    status="degraded",
+                    latency_ms=latency,
+                    details=f"Search endpoint probe error: {str(net_err)[:80]}; fallback ready",
+                    metadata={"engine": "ddgs_fallback", "api_key_configured": True},
+                )
+        else:
+            latency = round((time.perf_counter() - t0) * 1000.0, 2)
+            services["web_dragnet"] = ServiceStatus(
+                status="up",
+                latency_ms=latency,
+                details="Zero-key DuckDuckGo search fallback active",
+                metadata={"engine": "duckduckgo", "api_key_configured": False},
+            )
+    except Exception as e:
+        latency = round((time.perf_counter() - t0) * 1000.0, 2)
+        services["web_dragnet"] = ServiceStatus(
+            status="down",
+            latency_ms=latency,
+            details=f"Failed to inspect Web Dragnet engine: {str(e)[:120]}",
         )
 
     # Compute overall composite status

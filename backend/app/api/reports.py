@@ -377,7 +377,19 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
     DARK   = colors.HexColor("#0e0e0e")
     GREY   = colors.HexColor("#9ca3af")
     LIGHT  = colors.HexColor("#f3f4f6")
+    # ── Palette: Professional Academic Forensic Palette ──
+    DARK   = colors.HexColor("#0f172a")  # Slate 900
+    SLATE  = colors.HexColor("#334155")  # Slate 700
+    BORDER = colors.HexColor("#cbd5e1")  # Slate 300
+    LIGHT  = colors.HexColor("#f8fafc")  # Slate 50
     WHITE  = colors.white
+    GREY   = colors.HexColor("#64748b")  # Slate 500
+    
+    RED    = colors.HexColor("#dc2626")  # Red 600
+    ORANGE = colors.HexColor("#ea580c")  # Orange 600
+    YELLOW = colors.HexColor("#d97706")  # Amber 600
+    GREEN  = colors.HexColor("#16a34a")  # Green 600
+    BLUE   = colors.HexColor("#2563eb")  # Blue 600
 
     MATCH_COLORS = {
         "internal_exact": RED,
@@ -385,100 +397,119 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
         "web": BLUE,
     }
 
+    PAGE_W, PAGE_H = A4
+    USABLE_W = PAGE_W - 2 * MARGIN
+
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
         leftMargin=MARGIN,
         rightMargin=MARGIN,
         topMargin=MARGIN,
-        bottomMargin=MARGIN + 10 * mm,
+        bottomMargin=MARGIN + 8 * mm,
     )
 
     styles = getSampleStyleSheet()
-    h1 = ParagraphStyle("H1", parent=styles["Heading1"], fontSize=20,
-                        textColor=DARK, spaceAfter=4, fontName="Helvetica-Bold")
-    h2 = ParagraphStyle("H2", parent=styles["Heading2"], fontSize=13,
-                        textColor=DARK, spaceAfter=4, fontName="Helvetica-Bold")
-    h3 = ParagraphStyle("H3", parent=styles["Heading3"], fontSize=10,
+    h1 = ParagraphStyle("H1", parent=styles["Heading1"], fontSize=13, leading=17,
                         textColor=DARK, spaceAfter=2, fontName="Helvetica-Bold")
-    body = ParagraphStyle("Body", parent=styles["Normal"], fontSize=9,
-                          textColor=DARK, spaceAfter=2, fontName="Helvetica",
-                          leading=13)
-    label = ParagraphStyle("Label", parent=styles["Normal"], fontSize=7,
-                           textColor=GREY, fontName="Helvetica", spaceAfter=1,
-                           leading=10)
-    mono = ParagraphStyle("Mono", parent=styles["Normal"], fontSize=7.5,
-                          fontName="Courier", leading=10, textColor=DARK)
-    center = ParagraphStyle("Center", parent=body, alignment=TA_CENTER)
+    h2 = ParagraphStyle("H2", parent=styles["Heading2"], fontSize=10.5, leading=14,
+                        textColor=DARK, spaceAfter=2, fontName="Helvetica-Bold")
+    body = ParagraphStyle("Body", parent=styles["Normal"], fontSize=8, leading=11,
+                          textColor=DARK, spaceAfter=1, fontName="Helvetica")
+    body_bold = ParagraphStyle("BodyBold", parent=body, fontName="Helvetica-Bold")
+    label = ParagraphStyle("Label", parent=styles["Normal"], fontSize=7, leading=9,
+                           textColor=GREY, fontName="Helvetica")
+    mono = ParagraphStyle("Mono", parent=styles["Normal"], fontSize=7, leading=9.5,
+                          fontName="Courier", textColor=DARK)
+    mono_small = ParagraphStyle("MonoSmall", parent=styles["Normal"], fontSize=6.5, leading=8.5,
+                                fontName="Courier", textColor=DARK)
 
     scores = report_data.get("scores", {})
     summary = report_data.get("summary_stats", {})
-    originality = scores.get("originality_score") or 0
-    similarity = scores.get("similarity_score") or 0
+    originality = scores.get("originality_score") or 0.0
+    similarity = scores.get("similarity_score") or 0.0
     risk = (scores.get("risk_level") or "low").upper()
     risk_color = RED if risk == "HIGH" else (YELLOW if risk == "MODERATE" else GREEN)
 
     matches = report_data.get("matches", [])
+    excluded_count = summary.get("excluded_matches", 0)
     if not include_excluded:
         matches = [m for m in matches if not m.get("is_excluded")]
 
     sources = report_data.get("sources", [])
     ai_det = report_data.get("ai_detection")
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     report_hash = hashlib.sha256(
         f"{report_data.get('document_id')}{now.isoformat()}".encode()
     ).hexdigest()[:16].upper()
 
+    doc_text = report_data.get("document_text") or ""
+    word_count = len(doc_text.split()) if doc_text else (summary.get("total_words") or 0)
+    char_count = len(doc_text)
+
     story = []
 
-    # ── PAGE 1: COVER ────────────────────────────────────────────────────────
-    story.append(Spacer(1, 4 * mm))
-
-    # Header bar
-    cover_header = Table(
-        [[ Paragraph("ALETHIAN FORENSIC REPORT", ParagraphStyle(
-            "CoverH", fontSize=18, textColor=WHITE, fontName="Helvetica-Bold",
-            alignment=TA_CENTER
-        ))]],
-        colWidths=[PAGE_W - 2 * MARGIN],
-        rowHeights=[14 * mm],
+    # ── HEADER BANNER ────────────────────────────────────────────────────────
+    header_table = Table(
+        [[
+            Paragraph("<b>ALETHIAN FORENSIC REPORT</b><br/><font size=7 color='#94a3b8'>ACADEMIC INTEGRITY & MULTI-STAGE FORENSIC AUDIT ENGINE v3.0</font>",
+                      ParagraphStyle("HdrL", fontSize=13, leading=16, textColor=WHITE, fontName="Helvetica-Bold")),
+            Paragraph(f"<font size=7 color='#94a3b8'>ANALYSIS DATE</font><br/><b>{now.strftime('%b %d, %Y • %H:%M UTC')}</b>",
+                      ParagraphStyle("HdrR", fontSize=8, leading=11, textColor=WHITE, fontName="Helvetica", alignment=TA_RIGHT)),
+        ]],
+        colWidths=[USABLE_W * 0.65, USABLE_W * 0.35],
     )
-    cover_header.setStyle(TableStyle([
+    header_table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), DARK),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
     ]))
-    story.append(cover_header)
-    story.append(Spacer(1, 4 * mm))
+    story.append(header_table)
+    story.append(Spacer(1, 3 * mm))
 
-    # Document metadata table
+    # ── DOCUMENT METADATA GRID ───────────────────────────────────────────────
     doc_title = report_data.get("document_title")
-    if not doc_title or doc_title.lower() == "unknown":
+    if not doc_title or doc_title.lower() in ("unknown", "unknown title", "unknown title (ocr)"):
         doc_title = report_data.get("filename") or "Submitted Document"
 
     meta_data = [
-        ["Document Title:", html.escape(str(doc_title)[:100])],
-        ["Author:", html.escape(str(report_data.get("document_author") or "Unknown")[:60])],
-        ["Analysis Date:", now.strftime("%B %d, %Y at %H:%M UTC")],
-        ["Total Pages:", str(report_data.get("page_count") or "—")],
+        [
+            Paragraph("<b>Document Title:</b>", body_bold),
+            Paragraph(html.escape(str(doc_title)[:85]), body),
+            Paragraph("<b>Total Pages:</b>", body_bold),
+            Paragraph(str(report_data.get("page_count") or "—"), body),
+        ],
+        [
+            Paragraph("<b>Author / Submitter:</b>", body_bold),
+            Paragraph(html.escape(str(report_data.get("document_author") or "Student / Researcher")[:50]), body),
+            Paragraph("<b>Word Count:</b>", body_bold),
+            Paragraph(f"{word_count:,} words", body),
+        ],
+        [
+            Paragraph("<b>Audit Identifier:</b>", body_bold),
+            Paragraph(str(report_data.get("document_id") or "—")[:32], mono),
+            Paragraph("<b>Character Count:</b>", body_bold),
+            Paragraph(f"{char_count:,} chars", body),
+        ],
     ]
-    meta_table = Table(meta_data, colWidths=[45 * mm, PAGE_W - 2 * MARGIN - 45 * mm])
+    meta_table = Table(meta_data, colWidths=[36 * mm, 64 * mm, 32 * mm, 48 * mm])
     meta_table.setStyle(TableStyle([
-        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-        ("FONTNAME", (1, 0), (1, -1), "Helvetica"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("TEXTCOLOR", (0, 0), (-1, -1), DARK),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
         ("ROWBACKGROUNDS", (0, 0), (-1, -1), [LIGHT, WHITE]),
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
     story.append(meta_table)
-    story.append(Spacer(1, 5 * mm))
+    story.append(Spacer(1, 3.5 * mm))
 
-    # Dual Scores Display: Originality + AI Forensic Score
+    # ── DUAL SCORE CARDS (ORIGINALITY & AI GENERATION) ──────────────────────
     ai_prob_val = 0.0
     ai_verdict = "NOT PERFORMED"
     if ai_det and not ai_det.get("abstained"):
@@ -486,229 +517,333 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
         ai_verdict = (ai_det.get("verdict_label") or ai_det.get("verdict") or "HUMAN").upper()
 
     ai_color = RED if ai_prob_val >= 60 else (ORANGE if ai_prob_val >= 35 else GREEN)
+    card_w = (USABLE_W - 4 * mm) / 2
 
-    score_block_data = [[
-        Paragraph(f"{round(originality)}%",
-                  ParagraphStyle("Score1", fontSize=42, fontName="Helvetica-Bold",
-                                 textColor=risk_color, alignment=TA_CENTER)),
-        Paragraph(f"<b>ORIGINALITY SCORE</b><br/><font color='{risk_color.hexval()}'><b>{risk} RISK</b></font><br/><font size=7 color='#6b7280'>Plagiarism & Similarity Index</font>",
-                  ParagraphStyle("ScoreLabel1", fontSize=10, fontName="Helvetica",
-                                 textColor=DARK, alignment=TA_LEFT, leading=14)),
-        Paragraph(f"{ai_prob_val}%" if ai_det else "N/A",
-                  ParagraphStyle("Score2", fontSize=42, fontName="Helvetica-Bold",
-                                 textColor=ai_color if ai_det else GREY, alignment=TA_CENTER)),
-        Paragraph(f"<b>AI GENERATION PROB</b><br/><font color='{(ai_color if ai_det else GREY).hexval()}'><b>{ai_verdict}</b></font><br/><font size=7 color='#6b7280'>Multi-Stage Neural Forensics</font>",
-                  ParagraphStyle("ScoreLabel2", fontSize=10, fontName="Helvetica",
-                                 textColor=DARK, alignment=TA_LEFT, leading=14)),
-    ]]
-    w_quarter = (PAGE_W - 2 * MARGIN) / 4
-    score_table = Table(score_block_data, colWidths=[w_quarter * 0.8, w_quarter * 1.2, w_quarter * 0.8, w_quarter * 1.2])
-    score_table.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("BOX", (0, 0), (1, -1), 1.2, risk_color),
-        ("BOX", (2, 0), (3, -1), 1.2, ai_color if ai_det else GREY),
-        ("TOPPADDING", (0, 0), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+    # Card 1: Originality Card Content
+    card1_content = [
+        [Paragraph(f"<b>ORIGINALITY AUDIT</b> &nbsp; <font color='{risk_color.hexval()}'><b>[{risk} RISK]</b></font>",
+                   ParagraphStyle("C1H", fontSize=8.5, leading=11, fontName="Helvetica-Bold", textColor=DARK))],
+        [Paragraph(f"{round(originality)}%",
+                   ParagraphStyle("C1Score", fontSize=26, leading=30, fontName="Helvetica-Bold", textColor=risk_color))],
+        [Paragraph(f"{100 - round(originality)}% similarity with external archives • {summary.get('total_matches', 0)} total matches",
+                   label)],
+    ]
+    card1_table = Table(card1_content, colWidths=[card_w - 6 * mm])
+    card1_table.setStyle(TableStyle([
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
     ]))
-    story.append(score_table)
-    story.append(Spacer(1, 4 * mm))
 
-    # Internal vs Web contribution bar
+    # Card 2: AI Forensics Card Content
+    card2_content = [
+        [Paragraph(f"<b>AI GENERATION PROBABILITY</b> &nbsp; <font color='{(ai_color if ai_det else GREY).hexval()}'><b>[{ai_verdict}]</b></font>",
+                   ParagraphStyle("C2H", fontSize=8.5, leading=11, fontName="Helvetica-Bold", textColor=DARK))],
+        [Paragraph(f"{ai_prob_val}%" if ai_det else "N/A",
+                   ParagraphStyle("C2Score", fontSize=26, leading=30, fontName="Helvetica-Bold", textColor=ai_color if ai_det else GREY))],
+        [Paragraph("Zero-shot Binoculars perplexity cross-ratio (Qwen2.5-0.5B)" if ai_det else "AI forensic worker unconfigured or inactive",
+                   label)],
+    ]
+    card2_table = Table(card2_content, colWidths=[card_w - 6 * mm])
+    card2_table.setStyle(TableStyle([
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+    ]))
+
+    score_card_container = Table(
+        [[card1_table, card2_table]],
+        colWidths=[card_w, card_w],
+    )
+    score_card_container.setStyle(TableStyle([
+        ("BOX", (0, 0), (0, 0), 1.2, risk_color),
+        ("BACKGROUND", (0, 0), (0, 0), LIGHT),
+        ("BOX", (1, 0), (1, 0), 1.2, ai_color if ai_det else GREY),
+        ("BACKGROUND", (1, 0), (1, 0), LIGHT),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.append(score_card_container)
+    story.append(Spacer(1, 3.5 * mm))
+
+    # ── SELF-SUBMISSION CALLOUT IF APPLICABLE ─────────────────────────────────
+    if excluded_count > 0:
+        callout_data = [[
+            Paragraph(
+                f"<b>Author Draft Isolation Notice:</b> {excluded_count} segments match earlier draft(s) submitted by the same author. "
+                "In accordance with academic self-plagiarism isolation rules, these segments are cataloged in the Source Index but excluded from plagiarism penalties.",
+                ParagraphStyle("Notice", fontSize=7.5, leading=10, textColor=colors.HexColor("#0369a1"), fontName="Helvetica")
+            )
+        ]]
+        callout_table = Table(callout_data, colWidths=[USABLE_W])
+        callout_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f0f9ff")),
+            ("BOX", (0, 0), (-1, -1), 0.8, colors.HexColor("#bae6fd")),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        story.append(callout_table)
+        story.append(Spacer(1, 3 * mm))
+
+    # ── ARCHIVE CORPUS & PLAGIARISM STATISTICS ──────────────────────────────
     int_pct = scores.get("internal_contribution", 0)
     web_pct = scores.get("web_contribution", 0)
     contrib_data = [
-        ["Archive Corpus", "Contribution", "Sources", "Match Count"],
-        ["Internal Archive", f"{int_pct:.1f}%",
+        ["Archive Corpus", "Contribution", "Unique Sources", "Matched Passages"],
+        ["University Institutional Theses", f"{int_pct:.1f}%",
          str(sum(1 for s in sources if s.get("type") == "internal")),
          str(summary.get("internal_exact", 0) + summary.get("internal_paraphrase", 0))],
-        ["Web Dragnet", f"{web_pct:.1f}%",
+        ["Web Dragnet Online Gateway", f"{web_pct:.1f}%",
          str(sum(1 for s in sources if s.get("type") == "web")),
          str(summary.get("web_matches", 0))],
     ]
-    contrib_table = Table(contrib_data,
-                          colWidths=[55 * mm, 35 * mm, 35 * mm, 45 * mm])
+    contrib_table = Table(contrib_data, colWidths=[65 * mm, 35 * mm, 38 * mm, 42 * mm])
     contrib_table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), DARK),
         ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [LIGHT, WHITE]),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ("LEFTPADDING", (0, 0), (-1, -1), 8),
-    ]))
-    story.append(contrib_table)
-    story.append(Spacer(1, 4 * mm))
-
-    # Summary stats table
-    story.append(Paragraph("Plagiarism Summary Statistics", h2))
-    story.append(HRFlowable(width="100%", thickness=1, color=DARK))
-    story.append(Spacer(1, 2 * mm))
-    stats_data = [
-        ["Total Matches", str(summary.get("total_matches", 0)),
-         "Unique Sources", str(summary.get("unique_sources", 0))],
-        ["Internal Exact", str(summary.get("internal_exact", 0)),
-         "Internal Paraphrase", str(summary.get("internal_paraphrase", 0))],
-        ["Web Matches", str(summary.get("web_matches", 0)),
-         "Pages with Matches", f"{summary.get('pages_with_matches', 0)} / {summary.get('total_pages', 0)}"],
-        ["Avg Match Length", f"{summary.get('avg_match_length_words', 0):.0f} words",
-         "Longest Match", f"{summary.get('longest_match_words', 0)} words (pg {summary.get('longest_match_page', '—')})"],
-        ["Excluded Matches", str(summary.get("excluded_matches", 0)),
-         "Coherent Domains", ", ".join(summary.get("coherent_domains", [])) or "None"],
-    ]
-    stats_table = Table(stats_data,
-                        colWidths=[45 * mm, 40 * mm, 55 * mm, 30 * mm])
-    stats_table.setStyle(TableStyle([
-        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-        ("FONTNAME", (2, 0), (2, -1), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 8.5),
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
-        ("ROWBACKGROUNDS", (0, 0), (-1, -1), [LIGHT, WHITE]),
         ("TOPPADDING", (0, 0), (-1, -1), 3),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    story.append(contrib_table)
+    story.append(Spacer(1, 3 * mm))
+
+    # Summary Statistics
+    stats_data = [
+        [
+            Paragraph("<b>Total Matched Segments:</b>", body),
+            Paragraph(str(summary.get("total_matches", 0)), body_bold),
+            Paragraph("<b>Unique Sources Identified:</b>", body),
+            Paragraph(str(summary.get("unique_sources", 0)), body_bold),
+        ],
+        [
+            Paragraph("<b>Archival Exact Matches:</b>", body),
+            Paragraph(str(summary.get("internal_exact", 0)), body),
+            Paragraph("<b>Archival Paraphrases:</b>", body),
+            Paragraph(str(summary.get("internal_paraphrase", 0)), body),
+        ],
+        [
+            Paragraph("<b>Web Dragnet Matches:</b>", body),
+            Paragraph(str(summary.get("web_matches", 0)), body),
+            Paragraph("<b>Pages with Active Overlap:</b>", body),
+            Paragraph(f"{summary.get('pages_with_matches', 0)} / {report_data.get('page_count', '—')}", body),
+        ],
+        [
+            Paragraph("<b>Excluded Self-Draft Matches:</b>", body),
+            Paragraph(str(excluded_count), body),
+            Paragraph("<b>Average Match Length:</b>", body),
+            Paragraph(f"{summary.get('avg_match_length_words', 0):.0f} words", body),
+        ],
+    ]
+    stats_table = Table(stats_data, colWidths=[46 * mm, 44 * mm, 46 * mm, 44 * mm])
+    stats_table.setStyle(TableStyle([
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
+        ("ROWBACKGROUNDS", (0, 0), (-1, -1), [WHITE, LIGHT]),
+        ("TOPPADDING", (0, 0), (-1, -1), 2.5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
     story.append(stats_table)
     story.append(Spacer(1, 4 * mm))
 
-    # Reviewer sign-off block
-    story.append(Paragraph("Faculty Review & Sign-Off", h2))
-    story.append(HRFlowable(width="100%", thickness=1, color=DARK))
-    story.append(Spacer(1, 2 * mm))
-    review = report_data.get("review", {})
-    review_data = [
-        ["Reviewed By:", html.escape(str(review.get("reviewed_by") or "___________________________"))],
-        ["Date:", str(review.get("reviewed_at") or "___________________________")],
-        ["Verdict:", html.escape(str(review.get("verdict") or "___________________________"))],
-        ["Signature:", "___________________________"],
-    ]
-    review_table = Table(review_data,
-                         colWidths=[40 * mm, PAGE_W - 2 * MARGIN - 40 * mm])
-    review_table.setStyle(TableStyle([
-        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 8.5),
-        ("TOPPADDING", (0, 0), (-1, -1), 3),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-        ("LINEBELOW", (0, -1), (-1, -1), 0.5, GREY),
-    ]))
-    story.append(review_table)
-    story.append(PageBreak())
-
-    # ── PAGE 2: AI FORENSICS & SOURCE SUMMARY ───────────────────────────────
+    # ── AI FORENSIC DIAGNOSTICS & FLAGGED PASSAGES ──────────────────────────
     if ai_det:
-        story.append(Paragraph("AI Forensic Diagnostic Breakdown", h1))
-        story.append(HRFlowable(width="100%", thickness=2, color=DARK))
-        story.append(Spacer(1, 3 * mm))
-
+        story.append(Paragraph("AI Forensic Diagnostic Breakdown", h2))
         ai_diag_data = [
-            ["Metric", "Measured Value", "Threshold / Baseline", "Status"],
-            ["Binoculars Perplexity Ratio",
-             f"{ai_det.get('binoculars_ratio', 0.0):.4f}" if ai_det.get('binoculars_ratio') is not None else "N/A",
-             "Threshold: 0.9015",
-             "ELEVATED" if (ai_det.get('binoculars_ratio') or 0.0) >= 0.9015 else "NORMAL"],
-            ["DNA-Detect Burstiness Score",
-             f"{ai_det.get('dna_detect_score', 0.0):.4f}" if ai_det.get('dna_detect_score') is not None else "N/A",
-             "Zero-shot token divergence",
-             "ANALYZED"],
-            ["Stage 2 Escalation Verdict",
-             html.escape(str(ai_det.get("verdict") or "T0_HUMAN")),
-             "Multi-stage zero-shot ensemble",
-             html.escape(str(ai_det.get("verdict_label") or "Human"))],
-            ["Prose Token Count",
-             f"{ai_det.get('prose_token_count', 0)} tokens",
-             "Min required: 150 tokens",
-             "VALID"],
-            ["Inference Latency",
-             f"{ai_det.get('latency_ms', 0):.0f} ms",
-             "NVIDIA Tesla V100 GPU",
-             "SUB-SECOND"],
+            ["Metric", "Measured Value", "Reference Baseline", "Status"],
+            [
+                "Binoculars Perplexity Ratio",
+                f"{ai_det.get('binoculars_ratio', 0.0):.4f}" if ai_det.get('binoculars_ratio') is not None else "N/A",
+                "Threshold: 0.9015",
+                "ELEVATED" if (ai_det.get('binoculars_ratio') or 0.0) >= 0.9015 else "NORMAL",
+            ],
+            [
+                "DNA-Detect Token Burstiness",
+                f"{ai_det.get('dna_detect_score', 0.0):.4f}" if ai_det.get('dna_detect_score') is not None else "N/A",
+                "Cross-token divergence",
+                "ANALYZED",
+            ],
+            [
+                "Multi-Stage Neural Verdict",
+                html.escape(str(ai_det.get("verdict") or "T0_HUMAN")),
+                "Observer: Qwen2.5-0.5B • Performer: Qwen2.5-0.5B-Instruct",
+                html.escape(str(ai_det.get("verdict_label") or "Human")),
+            ],
+            [
+                "Analyzed Prose Tokens",
+                f"{ai_det.get('prose_token_count', 0):,} tokens",
+                "Min threshold: 150 tokens",
+                "VALID",
+            ],
+            [
+                "Neural Inference Hardware",
+                f"{ai_det.get('latency_ms', 0):.0f} ms latency",
+                "NVIDIA Tesla V100 GPU (SDPA FP16)",
+                "OPERATIONAL",
+            ],
         ]
-        ai_table = Table(ai_diag_data, colWidths=[55 * mm, 35 * mm, 45 * mm, 35 * mm])
+        ai_table = Table(ai_diag_data, colWidths=[55 * mm, 35 * mm, 55 * mm, 35 * mm])
         ai_table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), DARK),
             ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 8),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
+            ("FONTSIZE", (0, 0), (-1, -1), 7.5),
+            ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [LIGHT, WHITE]),
-            ("TOPPADDING", (0, 0), (-1, -1), 3),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ("TOPPADDING", (0, 0), (-1, -1), 2.5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5),
             ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ]))
         story.append(ai_table)
         story.append(Spacer(1, 3 * mm))
 
-        # Tamper flags if any
-        tf_list = ai_det.get("tamper_flags") or []
-        if tf_list:
-            story.append(Paragraph(f"<b>Adversarial Obfuscation Detected:</b> {len(tf_list)} events found (zero-width characters / homoglyphs).", ParagraphStyle("Alert", fontSize=8, textColor=RED, fontName="Helvetica-Bold")))
-            story.append(Spacer(1, 2 * mm))
+        # Flagged AI Passages Table (gives actionable, concrete details!)
+        windows = ai_det.get("windows") or []
+        elevated_windows = [w for w in windows if (w.get("ai_probability") or 0.0) >= 0.25]
+        if not elevated_windows:
+            elevated_windows = sorted(windows, key=lambda x: -(x.get("ai_probability") or 0.0))[:6]
 
-        story.append(Spacer(1, 4 * mm))
+        if elevated_windows:
+            story.append(Paragraph("<b>Neural Flagged Text Passages (High Likelihood Windows):</b>", body_bold))
+            story.append(Spacer(1, 1.5 * mm))
+            ai_pass_header = [["Section / Page", "AI Likelihood", "Perplexity", "Flagged Excerpt"]]
+            ai_pass_rows = []
+            for w in elevated_windows[:8]:  # Top 8 flagged paragraphs
+                prob = round((w.get("ai_probability") or 0.0) * 100.0)
+                risk_lvl = (w.get("risk_level") or "Elevated").capitalize()
+                ppl = f"{w.get('binoculars_score', 0.0):.3f}" if w.get('binoculars_score') else "—"
+                exc = html.escape((w.get("excerpt") or "").strip()[:180])
+                if len(w.get("excerpt") or "") > 180:
+                    exc += "..."
+                ai_pass_rows.append([
+                    Paragraph(f"Section #{w.get('window_index', 0)+1}<br/><font color='#64748b'>Page {w.get('page_number', 1)}</font>", body),
+                    Paragraph(f"<b>{prob}% AI</b><br/><font size=6.5 color='{ORANGE.hexval() if prob < 60 else RED.hexval()}'>{risk_lvl}</font>", body),
+                    Paragraph(ppl, mono),
+                    Paragraph(f"<i>\"{exc}\"</i>", mono_small),
+                ])
+            ai_pass_table = Table(
+                ai_pass_header + ai_pass_rows,
+                colWidths=[24 * mm, 26 * mm, 20 * mm, 110 * mm]
+            )
+            ai_pass_table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), SLATE),
+                ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 7),
+                ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [WHITE, LIGHT]),
+                ("TOPPADDING", (0, 0), (-1, -1), 2.5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5),
+                ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]))
+            story.append(ai_pass_table)
+            story.append(Spacer(1, 3.5 * mm))
 
-    # Source Index
-    story.append(Paragraph("Source Index", h2))
-    story.append(HRFlowable(width="100%", thickness=1, color=DARK))
-    story.append(Spacer(1, 3 * mm))
+    # ── SOURCE INDEX DIRECTORY (DEDUPLICATED) ─────────────────────────────────
+    story.append(Paragraph("Matched Sources Directory", h2))
+    
+    # Deduplicate sources by title / url
+    dedup_sources = {}
+    for s in sources:
+        key = (s.get("title") or "").strip() or s.get("url") or s.get("domain") or "Unknown"
+        if key not in dedup_sources:
+            dedup_sources[key] = {
+                "title": s.get("title") or s.get("domain") or "Unknown",
+                "type": s.get("type", "internal").upper(),
+                "coverage_percent": s.get("coverage_percent") or 0.0,
+                "match_count": s.get("match_count") or 0,
+                "pages_affected": set(s.get("pages_affected") or []),
+            }
+        else:
+            dedup_sources[key]["match_count"] += (s.get("match_count") or 0)
+            dedup_sources[key]["coverage_percent"] = max(dedup_sources[key]["coverage_percent"], s.get("coverage_percent") or 0.0)
+            dedup_sources[key]["pages_affected"].update(s.get("pages_affected") or [])
 
-    if sources:
-        src_header = [["#", "Source", "Type", "Coverage", "Matches", "Pages"]]
+    if dedup_sources:
+        src_header = [["#", "Source Title & Reference", "Category", "Coverage", "Matches", "Affected Pages"]]
         src_rows = []
-        for i, s in enumerate(sorted(sources, key=lambda x: -(x.get("coverage_percent") or 0))[:25]):
-            src_title_clean = html.escape((s.get("title") or s.get("domain") or "Unknown")[:45])
+        for i, (k, s) in enumerate(sorted(dedup_sources.values(), key=lambda x: -x["coverage_percent"])[:15]):
+            pages_list = sorted(list(s["pages_affected"]))
+            pages_str = ", ".join(str(p) for p in pages_list[:8])
+            if len(pages_list) > 8:
+                pages_str += "..."
             src_rows.append([
                 str(i + 1),
-                src_title_clean,
-                s.get("type", "").upper(),
-                f"{s.get('coverage_percent') or 0:.1f}%",
-                str(s.get("match_count") or 0),
-                ", ".join(str(p) for p in (s.get("pages_affected") or [])[:6]) or "—",
+                Paragraph(html.escape(s["title"]), body),
+                s["type"],
+                f"{s['coverage_percent']:.1f}%",
+                str(s["match_count"]),
+                pages_str or "—",
             ])
         src_table = Table(
             src_header + src_rows,
-            colWidths=[8 * mm, 70 * mm, 20 * mm, 22 * mm, 18 * mm, 32 * mm],
+            colWidths=[8 * mm, 74 * mm, 22 * mm, 20 * mm, 18 * mm, 38 * mm],
         )
         src_table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), DARK),
             ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
             ("FONTSIZE", (0, 0), (-1, -1), 7.5),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
+            ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [LIGHT, WHITE]),
-            ("TOPPADDING", (0, 0), (-1, -1), 3),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 2.5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5),
+            ("LEFTPADDING", (0, 0), (-1, -1), 5),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 5),
             ("ALIGN", (3, 0), (4, -1), "RIGHT"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ]))
         story.append(src_table)
     else:
-        story.append(Paragraph("No sources identified.", body))
-
-    story.append(PageBreak())
-
-    # ── PAGES 3+: MATCH DETAILS ───────────────────────────────────────────────
-    story.append(Paragraph("Match Details", h1))
-    story.append(HRFlowable(width="100%", thickness=2, color=DARK))
+        story.append(Paragraph("No external sources or previous submissions matched against this document.", body))
     story.append(Spacer(1, 4 * mm))
 
+    # ── MATCH DETAILS / AUDIT EXEMPTION SECTION ──────────────────────────────
+    story.append(Paragraph("Plagiarism Match Breakdown", h2))
+    
     if not matches:
-        story.append(Paragraph("No matches found in archive or web search.", body))
+        empty_box = [
+            [Paragraph("<b>Archive & Web Dragnet Clearance:</b> 0 uncredited external or third-party matches found.", body_bold)],
+            [Paragraph(
+                f"All {excluded_count} detected similarities correspond to the author's previous draft submissions ({html.escape(str(doc_title))}). "
+                "No third-party or internet plagiarism was detected across university repositories, journal archives, or live web search gateways.",
+                body
+            )],
+        ]
+        empty_table = Table(empty_box, colWidths=[USABLE_W])
+        empty_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), LIGHT),
+            ("BOX", (0, 0), (-1, -1), 0.5, BORDER),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        story.append(empty_table)
+        story.append(Spacer(1, 4 * mm))
     else:
-        # Sort matches by similarity score descending, cap at top 60 to prevent PDF compilation memory explosion
-        sorted_matches = sorted(matches, key=lambda m: -(m.get("similarity_score") or m.get("similarity") or 0))
-        max_matches_in_pdf = 60
-        display_matches = sorted_matches[:max_matches_in_pdf]
-
-        if len(sorted_matches) > max_matches_in_pdf:
-            story.append(Paragraph(
-                f"<i>Showing top {max_matches_in_pdf} of {len(sorted_matches)} matches sorted by similarity. Complete list available in web dashboard and JSON export.</i>",
-                label
-            ))
-            story.append(Spacer(1, 3 * mm))
-
-        for i, m in enumerate(display_matches):
+        # Display top matches
+        sorted_matches = sorted(matches, key=lambda m: -(m.get("similarity_score") or m.get("similarity") or 0))[:25]
+        for i, m in enumerate(sorted_matches):
             mtype = m.get("type", "web")
             mcolor = MATCH_COLORS.get(mtype, BLUE)
             mtype_label = mtype.replace("_", " ").upper()
@@ -717,110 +852,87 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
             src_name = src.get("title") or src.get("domain") or "Unknown Source"
             src_url = src.get("url") or ""
 
-            # Sanitize and truncate submitted and source text
             raw_sub = m.get("submitted_text") or ""
             raw_src = m.get("source_text") or ""
-            submitted_text = html.escape(raw_sub[:500])
-            source_text = html.escape(raw_src[:500])
+            submitted_text = html.escape(raw_sub[:300])
+            source_text = html.escape(raw_src[:300])
 
             match_block = []
-            # Header bar for each match
             header_data = [[
-                Paragraph(f"Match #{i+1} — {html.escape(mtype_label)}", ParagraphStyle(
-                    "MHead", fontSize=8.5, fontName="Helvetica-Bold",
-                    textColor=WHITE, alignment=TA_LEFT
-                )),
-                Paragraph(f"Page {html.escape(str(m.get('submitted_page', '—')))} · {sim}% similarity",
-                          ParagraphStyle("MSub", fontSize=8.5, fontName="Helvetica",
-                                         textColor=WHITE, alignment=TA_RIGHT)),
+                Paragraph(f"Match #{i+1} — {html.escape(mtype_label)}", ParagraphStyle("MHead", fontSize=8, fontName="Helvetica-Bold", textColor=WHITE, leading=10)),
+                Paragraph(f"Page {html.escape(str(m.get('submitted_page', '—')))} • {sim}% similarity", ParagraphStyle("MSub", fontSize=8, fontName="Helvetica", textColor=WHITE, alignment=TA_RIGHT, leading=10)),
             ]]
-            header_table = Table(
-                header_data,
-                colWidths=[(PAGE_W - 2 * MARGIN) * 0.65, (PAGE_W - 2 * MARGIN) * 0.35]
-            )
+            header_table = Table(header_data, colWidths=[USABLE_W * 0.65, USABLE_W * 0.35])
             header_table.setStyle(TableStyle([
                 ("BACKGROUND", (0, 0), (-1, -1), mcolor),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("LEFTPADDING", (0, 0), (-1, -1), 8),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
             ]))
             match_block.append(header_table)
 
-            # Source line
-            src_line = f"<b>Source:</b> {html.escape(src_name[:70])}"
+            src_line = f"<b>Source:</b> {html.escape(src_name[:65])}"
             if src_url:
-                src_line += f" — <font color='#6b7280'>{html.escape(src_url[:70])}</font>"
+                src_line += f" — <font color='#64748b'>{html.escape(src_url[:65])}</font>"
             match_block.append(Paragraph(src_line, label))
-            match_block.append(Spacer(1, 1.5 * mm))
+            match_block.append(Spacer(1, 1 * mm))
 
-            # Side-by-side submitted vs source
-            diff_data = [[
-                Paragraph("<b>Submitted Text</b>", ParagraphStyle(
-                    "DH", fontSize=7.5, fontName="Helvetica-Bold", textColor=DARK
-                )),
-                Paragraph("<b>Source Text</b>", ParagraphStyle(
-                    "DH", fontSize=7.5, fontName="Helvetica-Bold", textColor=DARK
-                )),
-            ], [
-                Paragraph(submitted_text or "—", mono),
-                Paragraph(source_text or "—", mono),
-            ]]
-            col_w = (PAGE_W - 2 * MARGIN - 2 * mm) / 2
+            diff_data = [
+                [Paragraph("<b>Submitted Text</b>", body_bold), Paragraph("<b>Source Text</b>", body_bold)],
+                [Paragraph(submitted_text or "—", mono_small), Paragraph(source_text or "—", mono_small)],
+            ]
+            col_w = (USABLE_W - 2 * mm) / 2
             diff_table = Table(diff_data, colWidths=[col_w, col_w])
             diff_table.setStyle(TableStyle([
                 ("BACKGROUND", (0, 0), (-1, 0), LIGHT),
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
+                ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("LEFTPADDING", (0, 0), (-1, -1), 5),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
             ]))
             match_block.append(diff_table)
-
-            if m.get("comment"):
-                match_block.append(Spacer(1, 1 * mm))
-                match_block.append(
-                    Paragraph(f"<b>Faculty Note:</b> {html.escape(str(m['comment']))}", label)
-                )
-            if m.get("is_excluded"):
-                match_block.append(
-                    Paragraph(f"<i>Excluded — {html.escape(str(m.get('exclude_reason', '')))}</i>", label)
-                )
-
-            match_block.append(Spacer(1, 4 * mm))
+            match_block.append(Spacer(1, 2.5 * mm))
             story.append(KeepTogether(match_block))
 
-    story.append(PageBreak())
-
-    # ── LAST PAGE: FOOTER / INTEGRITY ────────────────────────────────────────
-    story.append(Spacer(1, 20 * mm))
-    story.append(HRFlowable(width="100%", thickness=1, color=GREY))
-    story.append(Spacer(1, 4 * mm))
-    footer_text = [
-        "Generated by Alethian v3.0 — High-Throughput Plagiarism & AI Detection System",
-        f"Report generated: {now.strftime('%Y-%m-%d %H:%M UTC')}",
-        f"Document ID: {report_data.get('document_id', '—')}",
-        f"Cryptographic Integrity Token: {report_hash}",
-        "Notice: AI and Plagiarism indicators represent probabilistic forensic metrics to assist academic evaluation.",
+    # ── FACULTY REVIEW & SIGN-OFF BLOCK ──────────────────────────────────────
+    review = report_data.get("review", {})
+    review_data = [
+        [
+            Paragraph("<b>Faculty Sign-Off & Verification</b>", body_bold),
+            Paragraph("<b>Cryptographic Verification Hash:</b> " + f"<font face='Courier'>{report_hash}</font>", body),
+        ],
+        [
+            Paragraph("<b>Reviewed By:</b> " + html.escape(str(review.get("reviewed_by") or "___________________________")), body),
+            Paragraph("<b>Date:</b> " + str(review.get("reviewed_at") or "___________________________"), body),
+        ],
+        [
+            Paragraph("<b>Academic Verdict:</b> " + html.escape(str(review.get("verdict") or "___________________________")), body),
+            Paragraph("<b>Signature:</b> ___________________________", body),
+        ],
     ]
-    for line in footer_text:
-        story.append(Paragraph(html.escape(line), ParagraphStyle(
-            "Footer", fontSize=7, textColor=GREY,
-            fontName="Courier", alignment=TA_CENTER
-        )))
+    review_table = Table(review_data, colWidths=[USABLE_W * 0.5, USABLE_W * 0.5])
+    review_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), LIGHT),
+        ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    story.append(KeepTogether([review_table]))
 
     # Page header/footer callback
-    def _add_page_meta(canvas, doc):
+    def _add_page_meta(canvas, d):
         canvas.saveState()
         canvas.setFont("Helvetica", 7)
         canvas.setFillColor(GREY)
-        title_short = html.escape((report_data.get("document_title") or "Report")[:50])
-        canvas.drawString(MARGIN, 10 * mm,
-                          f"Alethian Report — {title_short}")
-        canvas.drawRightString(PAGE_W - MARGIN, 10 * mm,
-                                f"Page {doc.page}")
+        title_short = (report_data.get("document_title") or "Report")[:50]
+        canvas.drawString(MARGIN, 8 * mm, f"Alethian Forensic Report — {title_short}")
+        canvas.drawRightString(PAGE_W - MARGIN, 8 * mm, f"Page {d.page}")
         canvas.restoreState()
 
     doc.build(story, onFirstPage=_add_page_meta, onLaterPages=_add_page_meta)

@@ -11,7 +11,8 @@ import {
     Zap, 
     Layers, 
     X,
-    Clock
+    Clock,
+    Globe
 } from 'lucide-react';
 import Client from '../../api/client';
 
@@ -235,49 +236,94 @@ export default function HealthMonitorModal({ isOpen, onClose }) {
                         </div>
                     </div>
 
-                    {/* 5. Celery GPU AI Worker Highlight Box */}
-                    <div className="p-4 rounded border border-ghost bg-surface-container/40">
-                        <div className="flex items-start justify-between">
-                            <div className="flex items-center space-x-3">
-                                <div className="w-8 h-8 rounded bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
-                                    <Zap className="w-4 h-4" />
+                    {/* Bottom Row: GPU AI Worker & Web Dragnet Search Gateway */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                        {/* 5. Celery GPU AI Worker Highlight Box */}
+                        <div className="p-4 rounded border border-ghost bg-surface-container/40 flex flex-col justify-between">
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-center space-x-3">
+                                    <div className="w-8 h-8 rounded bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                                        <Zap className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <div className="text-xs font-semibold text-on-surface flex items-center space-x-2">
+                                            <span>GPU AI Forensics</span>
+                                            <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant border border-ghost">
+                                                Tesla V100
+                                            </span>
+                                        </div>
+                                        <div className="text-[11px] text-on-surface-variant font-mono mt-0.5">
+                                            Qwen2.5-0.5B • SDPA FP16
+                                        </div>
+                                    </div>
+                                </div>
+                                {(() => {
+                                    const b = getStatusBadge(services.celery_ai_worker?.status || 'down');
+                                    return (
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono ${b.className}`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${b.dotColor}`} />
+                                            {b.label}
+                                        </span>
+                                    );
+                                })()}
+                            </div>
+                            <div className="mt-3 pt-3 border-t border-ghost/60 grid grid-cols-2 gap-2 text-[11px] font-mono text-on-surface-variant">
+                                <div>
+                                    <span className="block text-[10px] text-on-surface-variant/70">Execution Target</span>
+                                    <span className="text-on-surface font-medium truncate block">ai_detection (Solo)</span>
                                 </div>
                                 <div>
-                                    <div className="text-xs font-semibold text-on-surface flex items-center space-x-2">
-                                        <span>GPU AI Forensics Worker</span>
-                                        <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant border border-ghost">
-                                            Tesla V100 32GB
-                                        </span>
-                                    </div>
-                                    <div className="text-[11px] text-on-surface-variant font-mono mt-0.5">
-                                        Observer: Qwen2.5-0.5B • Performer: Qwen2.5-0.5B-Instruct • SDPA FP16
-                                    </div>
+                                    <span className="block text-[10px] text-on-surface-variant/70">Worker Latency</span>
+                                    <span className="text-on-surface font-medium">
+                                        {services.celery_ai_worker?.latency_ms ? `${services.celery_ai_worker.latency_ms} ms` : 'Standby'}
+                                    </span>
                                 </div>
                             </div>
-                            {(() => {
-                                const b = getStatusBadge(services.celery_ai_worker?.status || 'down');
-                                return (
-                                    <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-mono ${b.className}`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${b.dotColor}`} />
-                                        {b.label}
-                                    </span>
-                                );
-                            })()}
                         </div>
-                        <div className="mt-3 pt-3 border-t border-ghost/60 grid grid-cols-3 gap-2 text-[11px] font-mono text-on-surface-variant">
-                            <div>
-                                <span className="block text-[10px] text-on-surface-variant/70">Queue Target</span>
-                                <span className="text-on-surface font-medium">ai_detection</span>
+
+                        {/* 6. Web Dragnet Search Gateway */}
+                        <div className="p-4 rounded border border-ghost bg-surface-container/40 flex flex-col justify-between">
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-center space-x-3">
+                                    <div className="w-8 h-8 rounded bg-sky-500/10 text-sky-400 flex items-center justify-center border border-sky-500/20">
+                                        <Globe className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <div className="text-xs font-semibold text-on-surface flex items-center space-x-2">
+                                            <span>Web Dragnet Engine</span>
+                                            <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant border border-ghost">
+                                                {services.web_dragnet?.metadata?.engine === 'serper' ? 'Google Index' : 
+                                                 (services.web_dragnet?.metadata?.engine === 'serpapi' ? 'SerpApi' : 'DuckDuckGo')}
+                                            </span>
+                                        </div>
+                                        <div className="text-[11px] text-on-surface-variant font-mono mt-0.5 truncate max-w-[190px]">
+                                            {services.web_dragnet?.details || 'Snippets-first crawler'}
+                                        </div>
+                                    </div>
+                                </div>
+                                {(() => {
+                                    const b = getStatusBadge(services.web_dragnet?.status || 'down');
+                                    return (
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono ${b.className}`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${b.dotColor}`} />
+                                            {b.label}
+                                        </span>
+                                    );
+                                })()}
                             </div>
-                            <div>
-                                <span className="block text-[10px] text-on-surface-variant/70">Execution Pool</span>
-                                <span className="text-on-surface font-medium">Solo (GPU-Pinned)</span>
-                            </div>
-                            <div>
-                                <span className="block text-[10px] text-on-surface-variant/70">Worker Latency</span>
-                                <span className="text-on-surface font-medium">
-                                    {services.celery_ai_worker?.latency_ms ? `${services.celery_ai_worker.latency_ms} ms` : 'Active'}
-                                </span>
+                            <div className="mt-3 pt-3 border-t border-ghost/60 grid grid-cols-2 gap-2 text-[11px] font-mono text-on-surface-variant">
+                                <div>
+                                    <span className="block text-[10px] text-on-surface-variant/70">Gateway Probe</span>
+                                    <span className="text-on-surface font-medium truncate block">
+                                        {services.web_dragnet?.metadata?.api_key_configured ? (services.web_dragnet.metadata.masked_key || 'Configured') : 'Zero-Key (DDGS)'}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="block text-[10px] text-on-surface-variant/70">Gateway Latency</span>
+                                    <span className="text-on-surface font-medium">
+                                        {services.web_dragnet?.latency_ms ? `${services.web_dragnet.latency_ms} ms` : 'Standby'}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>

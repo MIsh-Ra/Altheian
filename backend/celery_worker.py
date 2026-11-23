@@ -154,24 +154,8 @@ def analyze_document(self, document_id: str, file_path: str):
             page_count=doc.page_count or 1,
         )
 
-        # --- Stage 3: Web Dragnet ---
-        logger.info(f"[{document_id}] Stage: web_dragnet")
-        broadcast_status("web_dragnet", 60, "Searching web sources...")
-        web_matches = run_dragnet(
-            document_id,
-            text,
-            internal_matches,
-            page_boundaries=page_boundaries,
-            page_count=doc.page_count or 1,
-        )
-
-        # --- Stage 4: Report Generation ---
-        logger.info(f"[{document_id}] Stage: report_generation")
-        broadcast_status("report_generation", 85, "Generating originality report...")
-        all_raw_matches = internal_matches + web_matches
-
-        # Check for self-submissions / prior drafts by the same author
-        for m in all_raw_matches:
+        # Tag self-submissions / prior drafts by the same author immediately
+        for m in internal_matches:
             src_doc_id = m.get("source_document_id")
             if src_doc_id:
                 src_doc = db.query(Document).filter(Document.id == src_doc_id).first()
@@ -187,6 +171,22 @@ def analyze_document(self, document_id: str, file_path: str):
                         m["source_title"] = f"Prior Submission: {src_doc.filename or proper_title}"
                     else:
                         m["source_title"] = proper_title
+
+        # --- Stage 3: Web Dragnet ---
+        logger.info(f"[{document_id}] Stage: web_dragnet")
+        broadcast_status("web_dragnet", 60, "Searching web sources...")
+        web_matches = run_dragnet(
+            document_id,
+            text,
+            internal_matches,
+            page_boundaries=page_boundaries,
+            page_count=doc.page_count or 1,
+        )
+
+        # --- Stage 4: Report Generation ---
+        logger.info(f"[{document_id}] Stage: report_generation")
+        broadcast_status("report_generation", 85, "Generating originality report...")
+        all_raw_matches = internal_matches + web_matches
 
         doc_word_count = len(text.split())
         score = calculate_originality(all_raw_matches, doc_word_count, doc_text=text)
