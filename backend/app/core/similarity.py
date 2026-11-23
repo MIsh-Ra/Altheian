@@ -99,6 +99,12 @@ def run_similarity(document_id, text, db_session, page_boundaries=None, page_cou
                     if current_doc.title and current_doc.title not in ["Unknown Title", "Submitted Document", "Archive Document", ""]:
                         filters.append((Document.user_id == current_doc.user_id) & (Document.title == current_doc.title))
                 
+                # Also exclude any identical file hash or identical filename across runs
+                if current_doc.file_hash:
+                    filters.append(Document.file_hash == current_doc.file_hash)
+                if current_doc.filename:
+                    filters.append(Document.filename == current_doc.filename)
+                
                 if filters:
                     prior_docs = db_session.query(Document.id).filter(or_(*filters)).all()
                     for (p_id,) in prior_docs:
