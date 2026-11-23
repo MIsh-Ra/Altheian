@@ -71,6 +71,28 @@ async def upload_document(
         if hasattr(settings, 'MAX_UPLOAD_SIZE_MB') and size_mb > getattr(settings, 'MAX_UPLOAD_SIZE_MB', 100):
             raise HTTPException(status_code=413, detail=f"File too large: {size_mb:.1f}MB")
 
+        from app.core.dedup_cache import compute_file_hash, find_cached_document, clone_cached_document
+        file_hash = compute_file_hash(content)
+
+        # Ingestion Deduplication Cache: If exact identical PDF was already processed by this user,
+        # return an instant cloned audit without redundant Grobid parsing, Qdrant bloat, or GPU compute.
+        cached_match = find_cached_document(db, file_hash)
+        if cached_match and cached_match.user_id == current_user.id:
+            logger.info(f"Ingestion cache hit: reusing completed analysis from {cached_match.id} for user {current_user.id}")
+            new_doc_id = str(uuid.uuid4())
+            cloned = clone_cached_document(
+                db=db,
+                source_doc=cached_match,
+                new_doc_id=new_doc_id,
+                filename=file.filename,
+                user_id=current_user.id,
+                course_id=course_id,
+            )
+            cloned.score = cloned.report[0].score if cloned.report else 0.0
+            cloned.risk_level = cloned.report[0].risk_level if cloned.report else None
+            cloned.originality_score = cloned.report[0].score if cloned.report else None
+            return cloned
+
         safe_name = re.sub(r'[^\w\-.]', '_', file.filename.split('/')[-1].split('\\')[-1])
         # Use a persistent upload directory shared between API and Celery worker
         if settings.UPLOAD_DIR:
@@ -88,6 +110,7 @@ async def upload_document(
             title="Unknown Title",
             author="Unknown",
             filename=file.filename,
+            file_hash=file_hash,
             course_id=course_id,
             user_id=current_user.id,
             upload_date=datetime.datetime.now(datetime.timezone.utc),

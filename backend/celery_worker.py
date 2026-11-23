@@ -79,6 +79,14 @@ def analyze_document(self, document_id: str, file_path: str):
             return {"error": f"File too large: {file_size_mb:.1f}MB"}
 
         # --- Stage 1: Ingestion ---
+        if not getattr(doc, "file_hash", None):
+            try:
+                import hashlib
+                with open(file_path, "rb") as f:
+                    doc.file_hash = hashlib.sha256(f.read()).hexdigest()
+            except Exception as e:
+                logger.warning(f"Failed to compute file_hash: {e}")
+
         doc.status = DocumentStatus.processing
         db.commit()
         logger.info(f"[{document_id}] Stage: ingestion")

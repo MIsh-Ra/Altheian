@@ -56,6 +56,7 @@ class Document(Base):
     title = Column(String, nullable=True)
     author = Column(String, nullable=True)
     filename = Column(String, nullable=False)
+    file_hash = Column(String, index=True, nullable=True)
     upload_date = Column(DateTime, default=lambda: datetime.datetime.now(datetime.UTC))
     status = Column(Enum(DocumentStatus), default=DocumentStatus.pending)
     meta_data = Column(JSON, nullable=True)

@@ -21,6 +21,7 @@ class DocumentResponse(DocumentBase):
     page_count: Optional[int] = None
     risk_level: Optional[str] = None
     originality_score: Optional[float] = None
+    file_hash: Optional[str] = None
     meta_data: Optional[Dict[str, Any]] = None
     
     model_config = ConfigDict(from_attributes=True)
