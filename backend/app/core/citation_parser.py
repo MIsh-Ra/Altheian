@@ -46,8 +46,8 @@ RE_AUTHOR_YEAR = re.compile(
 # Also unicode superscripts: ¹, ², ³, ⁴, ⁵, ⁶, ⁷, ⁸, ⁹, ⁰
 RE_UNICODE_SUPERSCRIPT = re.compile(r'[¹²³⁴⁵⁶⁷⁸⁹⁰]+')
 RE_CARET_SUPERSCRIPT = re.compile(r'\^(\d{1,3})\b')
-# OCR artifacts where superscript became attached number after punctuation or word: "AUROC 9 .", "derivations 60 ."
-RE_ATTACHED_SUPERSCRIPT = re.compile(r'(?<=[a-zA-Z,;:)\"\'`])[\^]?(\d{1,3})(?=\s*[,.;:)]|\s+[A-Z])')
+# OCR / text artifacts where superscript became number after word: "AUROC 9 .", "papers 11 ,", "derivations 60 ."
+RE_ATTACHED_SUPERSCRIPT = re.compile(r'(?<=[a-zA-Z])\s*[\^]?(\d{1,3})\s*(?=[,;:)]|(?:\.(?:\s+|$)))')
 
 # 4. Attributive lead-in phrases with author and year/study:
 # "In Liang et al.’s landmark Patterns (2023) study"

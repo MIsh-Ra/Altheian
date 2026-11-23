@@ -69,6 +69,16 @@ def test_attached_superscript():
     assert any("60" in m.citation_keys for m in profile.markers)
 
 
+def test_spaced_superscript():
+    text = "We compare against previous ESL papers 11 , and post-2023 abstracts 13 ."
+    profile = parse_citations_in_chunk(text)
+    assert profile.is_cited is True
+    sup_markers = [m for m in profile.markers if m.marker_type == "superscript"]
+    assert len(sup_markers) == 2
+    assert "11" in sup_markers[0].citation_keys
+    assert "13" in sup_markers[1].citation_keys
+
+
 def test_unicode_superscript():
     text = "Prior experiments confirm this hypothesis¹²³ across all target domains."
     profile = parse_citations_in_chunk(text)
