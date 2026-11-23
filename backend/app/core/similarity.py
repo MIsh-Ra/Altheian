@@ -89,12 +89,13 @@ def run_similarity(document_id, text, db_session, page_boundaries=None, page_cou
             current_doc = db_session.query(Document).filter(Document.id == document_id).first()
             if current_doc:
                 filters = []
-                if current_doc.file_hash:
-                    filters.append(Document.file_hash == current_doc.file_hash)
-                if current_doc.user_id and current_doc.filename:
-                    filters.append((Document.user_id == current_doc.user_id) & (Document.filename == current_doc.filename))
-                if current_doc.user_id and current_doc.title and current_doc.title not in ["Unknown Title", "Submitted Document", "Archive Document", ""]:
-                    filters.append((Document.user_id == current_doc.user_id) & (Document.title == current_doc.title))
+                if current_doc.user_id:
+                    if current_doc.file_hash:
+                        filters.append((Document.user_id == current_doc.user_id) & (Document.file_hash == current_doc.file_hash))
+                    if current_doc.filename:
+                        filters.append((Document.user_id == current_doc.user_id) & (Document.filename == current_doc.filename))
+                    if current_doc.title and current_doc.title not in ["Unknown Title", "Submitted Document", "Archive Document", ""]:
+                        filters.append((Document.user_id == current_doc.user_id) & (Document.title == current_doc.title))
                 
                 if filters:
                     prior_docs = db_session.query(Document.id).filter(or_(*filters)).all()
