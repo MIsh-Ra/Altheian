@@ -860,13 +860,19 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
     story.append(Paragraph("Plagiarism Match Breakdown", h2))
     
     if not matches:
+        if excluded_count > 0:
+            clearance_msg = (
+                f"All {excluded_count} detected similarities correspond to author drafts or cited references. "
+                "No uncredited third-party or internet plagiarism was detected across university repositories, journal archives, or live web search gateways."
+            )
+        else:
+            clearance_msg = (
+                "No matching similarities were detected across university repositories, journal archives, or live web search gateways. "
+                "The submitted document passed all archive originality checks."
+            )
         empty_box = [
             [Paragraph("<b>Archive & Web Dragnet Clearance:</b> 0 uncredited external or third-party matches found.", body_bold)],
-            [Paragraph(
-                f"All {excluded_count} detected similarities correspond to the author's previous draft submissions ({html.escape(str(doc_title))}). "
-                "No third-party or internet plagiarism was detected across university repositories, journal archives, or live web search gateways.",
-                body
-            )],
+            [Paragraph(clearance_msg, body)],
         ]
         empty_table = Table(empty_box, colWidths=[USABLE_W])
         empty_table.setStyle(TableStyle([
