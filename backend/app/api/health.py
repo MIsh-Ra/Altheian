@@ -193,11 +193,11 @@ def check_system_health(db: Session = Depends(get_db)) -> HealthResponse:
                     client.endpoint,
                     headers={'X-API-KEY': api_key, 'Content-Type': 'application/json'},
                     data='{"q":"ping","num":1}',
-                    timeout=2.5
+                    timeout=4.0
                 ) if engine_type == "serper" else requests.get(
                     client.endpoint,
                     params={"q": "ping", "api_key": api_key, "num": 1},
-                    timeout=2.5
+                    timeout=4.0
                 )
                 latency = round((time.perf_counter() - t0) * 1000.0, 2)
                 if resp.status_code == 200:
