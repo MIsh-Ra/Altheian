@@ -79,7 +79,7 @@ export default function HealthMonitorModal({ isOpen, onClose }) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-            <div className="w-full max-w-2xl bg-surface-container-low border border-ghost rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="w-full max-w-3xl bg-surface-container-low border border-ghost rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
                 
                 {/* Modal Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-ghost bg-surface-container/60">
@@ -109,7 +109,7 @@ export default function HealthMonitorModal({ isOpen, onClose }) {
                 </div>
 
                 {/* Subsystem Cards */}
-                <div className="p-6 space-y-4 overflow-y-auto">
+                <div className="p-6 space-y-4 overflow-y-auto overflow-x-hidden">
                     {error && (
                         <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded text-xs text-rose-400 flex items-center space-x-2">
                             <AlertTriangle className="w-4 h-4 flex-none" />
