@@ -5,7 +5,7 @@ from app.core.embeddings import generate_embeddings_batch
 # Minimum number of real (alphabetic) words a chunk must contain to be indexed/matched.
 # This prevents punctuation runs like ". . . . ." from polluting the vector store
 # and generating spurious archival exact matches.
-MIN_REAL_WORDS = 15
+MIN_REAL_WORDS = 8
 
 def _count_real_words(text: str) -> int:
     """Return the number of tokens that contain at least one letter."""
@@ -34,25 +34,18 @@ def create_sliding_windows(text, window_size=None):
             if not p_sentences:
                 continue
             if len(p_sentences) <= window_size:
-                if _count_real_words(clean_p) >= MIN_REAL_WORDS:
-                    windows.append(clean_p)
+                windows.append(clean_p)
             else:
                 for i in range(len(p_sentences) - window_size + 1):
-                    chunk = " ".join(p_sentences[i:i + window_size])
-                    if _count_real_words(chunk) >= MIN_REAL_WORDS:
-                        windows.append(chunk)
+                    windows.append(" ".join(p_sentences[i:i + window_size]))
     else:
         text = " ".join(text.split())
         sentences = [s.strip() for s in re.split(r'(?<=[.!?]) +', text) if s.strip()]
         if len(sentences) <= window_size:
-            if text and _count_real_words(text) >= MIN_REAL_WORDS:
-                return [text]
-            return []
+            return [text] if text else []
 
         for i in range(len(sentences) - window_size + 1):
-            chunk = " ".join(sentences[i:i + window_size])
-            if _count_real_words(chunk) >= MIN_REAL_WORDS:
-                windows.append(chunk)
+            windows.append(" ".join(sentences[i:i + window_size]))
         
     return windows
 
