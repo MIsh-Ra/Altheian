@@ -26,16 +26,13 @@ def test_repeated_document_excluded_by_file_hash():
     mock_current_doc.filename = "my_paper.pdf"
     mock_current_doc.title = "A Novel Architecture"
     
-    # Mock DB queries
-    def query_side_effect(model):
-        m_q = MagicMock()
-        if hasattr(model, 'id'):
-            # Query for prior_docs
-            m_q.filter.return_value.all.return_value = [(prior_doc_id,)]
-            m_q.filter.return_value.first.return_value = mock_current_doc
-        return m_q
-    
-    mock_db.query.side_effect = query_side_effect
+    # Mock DB query chaining
+    mock_query = MagicMock()
+    mock_db.query.return_value = mock_query
+    mock_filter = MagicMock()
+    mock_query.filter.return_value = mock_filter
+    mock_filter.first.return_value = mock_current_doc
+    mock_filter.all.return_value = [(prior_doc_id,)]
     
     sample_text = "Deep learning architectures have revolutionized computer vision and natural language processing."
     
