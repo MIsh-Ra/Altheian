@@ -100,6 +100,13 @@ const Client = {
             const response = await api.patch('/admin/config', data);
             return response.data;
         }
+    },
+
+    system: {
+        getHealth: async () => {
+            const response = await api.get('/health');
+            return response.data;
+        }
     }
 };
 

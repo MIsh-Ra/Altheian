@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from app.api import admin, ai_detection, auth, documents, reports
+from app.api import admin, ai_detection, auth, documents, health, reports
 from app.core.exceptions import (
     AlethianException,
     alethian_exception_handler,
@@ -45,6 +45,8 @@ app.include_router(documents.router, prefix="/api/v1/documents", tags=["Document
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
 app.include_router(ai_detection.router, prefix="/api/v1/ai-detection", tags=["AI Detection"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
+app.include_router(health.router, prefix="/api/v1/health", tags=["Health"])
+app.include_router(health.router, prefix="/health", tags=["Health"])
 
 from pathlib import Path
 

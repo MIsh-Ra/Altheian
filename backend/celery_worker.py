@@ -97,7 +97,10 @@ def analyze_document(self, document_id: str, file_path: str):
             "page_boundaries", []
         )  # [(char_start, char_end, page_num)]
 
-        doc.title = str(parsed.get("title", doc.title)).replace("\x00", "")[:250]
+        raw_title = str(parsed.get("title") or doc.title or doc.filename or "Submitted Document").replace("\x00", "").strip()
+        if raw_title in ["Unknown Title", "Unknown Title (OCR)", ""]:
+            raw_title = (doc.filename or "Submitted Document").strip()
+        doc.title = raw_title[:250]
         doc.page_count = parsed.get("page_count", 1)
 
         if not text or len(text.strip()) < 50:
@@ -133,6 +136,7 @@ def analyze_document(self, document_id: str, file_path: str):
             document_id,
             text,
             title=doc.title,
+            user_id=doc.user_id,
             page_boundaries=page_boundaries,
             page_count=doc.page_count or 1,
         )
@@ -165,6 +169,24 @@ def analyze_document(self, document_id: str, file_path: str):
         logger.info(f"[{document_id}] Stage: report_generation")
         broadcast_status("report_generation", 85, "Generating originality report...")
         all_raw_matches = internal_matches + web_matches
+
+        # Check for self-submissions / prior drafts by the same author
+        for m in all_raw_matches:
+            src_doc_id = m.get("source_document_id")
+            if src_doc_id:
+                src_doc = db.query(Document).filter(Document.id == src_doc_id).first()
+                if src_doc:
+                    proper_title = src_doc.title or src_doc.filename or "Archive Document"
+                    if proper_title in ["Unknown Title", "Unknown Title (OCR)", ""]:
+                        proper_title = src_doc.filename or "Archive Document"
+
+                    if doc.user_id and src_doc.user_id == doc.user_id:
+                        m["is_self_submission"] = True
+                        m["is_excluded"] = True
+                        m["exclude_reason"] = f"Prior Submission by same author ({src_doc.filename or 'Draft'})"
+                        m["source_title"] = f"Prior Submission: {src_doc.filename or proper_title}"
+                    else:
+                        m["source_title"] = proper_title
 
         doc_word_count = len(text.split())
         score = calculate_originality(all_raw_matches, doc_word_count, doc_text=text)
@@ -233,6 +255,8 @@ def analyze_document(self, document_id: str, file_path: str):
                 submitted_end_char=m.get("submitted_end_char", 0),
                 similarity=m.get("similarity_score", m.get("score", 0.0) * 100),
                 match_length_words=len(m.get("submitted_text", "").split()),
+                is_excluded=m.get("is_excluded", False),
+                exclude_reason=m.get("exclude_reason"),
             )
             db.add(match_record)
 

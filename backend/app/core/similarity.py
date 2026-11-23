@@ -100,7 +100,8 @@ def run_similarity(document_id, text, db_session, page_boundaries=None, page_cou
                     "submitted_end_char": chunk["char_end"],
                     "similarity_score": m.score * 100,
                     "source_document_id": src_doc_id,
-                    "source_title": payload.get("title", "Archive Document")
+                    "source_user_id": payload.get("user_id"),
+                    "source_title": payload.get("title") or "Archive Document",
                 })
         
         # 2. Semantic search (lower threshold, excludes already-matched)
@@ -122,12 +123,13 @@ def run_similarity(document_id, text, db_session, page_boundaries=None, page_cou
                      "submitted_end_char": chunk["char_end"],
                      "similarity_score": m.score * 100,
                      "source_document_id": src_doc_id,
-                     "source_title": payload.get("title", "Archive Document")
+                     "source_user_id": payload.get("user_id"),
+                     "source_title": payload.get("title") or "Archive Document",
                  })
                  
     return deduplicate(matched_results)
 
-def index_document(document_id, text, title="Unknown Document", page_boundaries=None, page_count=1):
+def index_document(document_id, text, title="Unknown Document", user_id=None, page_boundaries=None, page_count=1):
     qdrant = _get_qdrant()
     
     # Delete existing vectors for this document to prevent duplicates (F-40)
@@ -142,6 +144,10 @@ def index_document(document_id, text, title="Unknown Document", page_boundaries=
     except Exception as e:
         logger.warning(f"Failed to delete old vectors for {document_id}: {e}")
     
+    clean_title = (title or "Archive Document").strip()
+    if clean_title in ["Unknown Document", "Unknown Title", "Unknown Title (OCR)", ""]:
+        clean_title = "Archive Document"
+
     chunks = process_text_into_chunks(text, page_boundaries, page_count=page_count)
     points = []
     for c in chunks:
@@ -150,8 +156,9 @@ def index_document(document_id, text, title="Unknown Document", page_boundaries=
             vector=c["embedding"],
             payload={
                 "document_id": document_id,
+                "user_id": user_id,
                 "text": c["text"],
-                "title": title,
+                "title": clean_title,
                 "page": c["page"]
             }
         ))

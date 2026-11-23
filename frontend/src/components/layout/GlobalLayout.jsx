@@ -1,12 +1,32 @@
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, LayoutDashboard, Settings, LogOut, Moon, Sun } from 'lucide-react';
+import { Shield, LayoutDashboard, Settings, LogOut, Moon, Sun, Activity } from 'lucide-react';
 import { useTheme } from '../ThemeContext';
+import HealthMonitorModal from '../common/HealthMonitorModal';
+import Client from '../../api/client';
 
 export default function GlobalLayout({ children }) {
     const navigate = useNavigate();
     const location = useLocation();
     const { theme, toggleTheme } = useTheme();
     const user = JSON.parse(localStorage.getItem('alethian_user') || '{}');
+
+    const [healthModalOpen, setHealthModalOpen] = useState(false);
+    const [systemStatus, setSystemStatus] = useState('healthy');
+
+    useEffect(() => {
+        const checkHealth = async () => {
+            try {
+                const res = await Client.system.getHealth();
+                setSystemStatus(res.status || 'healthy');
+            } catch {
+                setSystemStatus('down');
+            }
+        };
+        checkHealth();
+        const interval = setInterval(checkHealth, 25000);
+        return () => clearInterval(interval);
+    }, []);
 
     const handleLogout = () => {
         localStorage.removeItem('alethian_token');
@@ -18,6 +38,19 @@ export default function GlobalLayout({ children }) {
         { path: '/dashboard', label: 'Faculty dashboard', icon: LayoutDashboard },
         { path: '/admin', label: 'System configuration', icon: Settings }
     ];
+
+    const getStatusIndicator = () => {
+        switch (systemStatus) {
+            case 'healthy':
+                return { dot: 'bg-emerald-500', text: 'Operational' };
+            case 'degraded':
+                return { dot: 'bg-amber-500', text: 'Degraded' };
+            default:
+                return { dot: 'bg-rose-500', text: 'Offline' };
+        }
+    };
+
+    const statusInfo = getStatusIndicator();
 
     return (
         <div className="flex h-screen w-full bg-background overflow-hidden text-on-background print:h-auto print:overflow-visible print:block">
@@ -53,6 +86,20 @@ export default function GlobalLayout({ children }) {
                                 </button>
                             );
                         })}
+                        {/* System Health Quick Diagnostic Button */}
+                        <button
+                            onClick={() => setHealthModalOpen(true)}
+                            className="w-full flex items-center justify-between px-3 py-2 rounded text-xs font-medium text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
+                        >
+                            <span className="flex items-center space-x-2.5">
+                                <Activity className="w-4 h-4 text-on-surface-variant" strokeWidth={1.5} />
+                                <span>Cluster health</span>
+                            </span>
+                            <span className="flex items-center space-x-1.5">
+                                <span className={`w-1.5 h-1.5 rounded-full ${statusInfo.dot} animate-pulse`} />
+                                <span className="text-[10px] font-mono text-on-surface-variant">{statusInfo.text}</span>
+                            </span>
+                        </button>
                     </nav>
                 </div>
 
@@ -93,6 +140,11 @@ export default function GlobalLayout({ children }) {
             <main className="flex-1 min-w-0 bg-surface overflow-auto relative print:h-auto print:overflow-visible print:block">
                 {children}
             </main>
+
+            <HealthMonitorModal 
+                isOpen={healthModalOpen} 
+                onClose={() => setHealthModalOpen(false)} 
+            />
         </div>
     );
 }
