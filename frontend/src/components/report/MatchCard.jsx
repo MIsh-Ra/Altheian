@@ -8,9 +8,22 @@ import { getTermLabel } from '../../utils/glossary';
 
 export default function MatchCard({ match, onUpdate }) {
     const { id } = useParams();
-    const { setSelectedMatch, selectedMatchId } = useReportStore();
+    const { setSelectedMatch, selectedMatchId, setCurrentPage } = useReportStore();
     const [isEditingComment, setIsEditingComment] = useState(false);
     const [commentText, setCommentText] = useState(match.comment || "");
+
+    const handleCardClick = () => {
+        setSelectedMatch(match.id);
+        if (match.submitted_page && setCurrentPage) {
+            setCurrentPage(match.submitted_page);
+            setTimeout(() => {
+                const el = document.getElementById(`page-${match.submitted_page}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 30);
+        }
+    };
 
     const handleExclude = (e) => {
         e.stopPropagation();
@@ -41,7 +54,9 @@ export default function MatchCard({ match, onUpdate }) {
         const tagLabel = tagKey ? getTermLabel(tagKey) : 'Excluded match';
 
         return (
-            <div className={`p-3 rounded-sm border text-xs transition-opacity ${
+            <div 
+                onClick={handleCardClick}
+                className={`p-3 rounded-sm border text-xs transition-opacity cursor-pointer ${
                 isCitationGrounded
                     ? 'bg-emerald-500/5 border-emerald-500/30'
                     : isDraft
@@ -91,7 +106,7 @@ export default function MatchCard({ match, onUpdate }) {
 
     return (
         <div
-            onClick={() => setSelectedMatch(match.id)}
+            onClick={handleCardClick}
             className={`p-3.5 bg-surface border rounded-sm cursor-pointer transition-colors ${borderIndicator} ${
                 isSelected
                     ? 'border-secondary ring-1 ring-secondary/50 bg-surface-container-low shadow-xs'

@@ -13,17 +13,28 @@ import {
     Square, 
     AlertTriangle, 
     Loader2,
-    X
+    X,
+    LayoutList,
+    FileText
 } from 'lucide-react';
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { useReportStore } from '../../stores/reportStore';
 import Client from '../../api/client';
+import PDFPage from './PDFPage';
+
+// Configure pdfjs worker source in browser environments
+if (typeof window !== 'undefined' && window.Worker && pdfjsLib.GlobalWorkerOptions) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+}
 
 export default function PDFViewer({
     documentId,
     activeTab = 'plagiarism',
     totalPages,
     report,
-    className = ''
+    className = '',
+    initialViewMode
 }) {
     const { 
         currentPage = 1, 
@@ -34,10 +45,15 @@ export default function PDFViewer({
         aiDetectionResult
     } = useReportStore();
 
+    const [pdfDoc, setPdfDoc] = useState(null);
+    const [numPages, setNumPages] = useState(0);
     const [blobUrl, setBlobUrl] = useState(null);
+    const [rawPdfBytes, setRawPdfBytes] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [zoom, setZoom] = useState('fit'); // 'fit' | '100' | '125' | '150'
+    const defaultMode = initialViewMode || ((typeof window !== 'undefined' && typeof window.Worker !== 'undefined') ? 'canvas' : 'iframe');
+    const [viewMode, setViewMode] = useState(defaultMode); // 'canvas' (PDF.js in-situ) | 'iframe' (native browser PDFium)
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [pageInput, setPageInput] = useState(String(currentPage));
 
@@ -46,8 +62,10 @@ export default function PDFViewer({
     const [showAi, setShowAi] = useState(activeTab === 'ai_detection');
 
     const viewerContainerRef = useRef(null);
+    const scrollContainerRef = useRef(null);
     const iframeRef = useRef(null);
     const blobUrlRef = useRef(null);
+    const isProgrammaticScrollRef = useRef(false);
 
     // Synchronize page input when currentPage changes externally
     useEffect(() => {
@@ -66,6 +84,7 @@ export default function PDFViewer({
     // Calculate effective total pages
     const effectiveTotalPages = Math.max(
         1,
+        numPages ||
         totalPages ||
         report?.page_count ||
         report?.heatmap?.length ||
@@ -74,7 +93,7 @@ export default function PDFViewer({
         1
     );
 
-    // Fetch Vector PDF with authorization headers and fallback handling
+    // Fetch Vector PDF with authorization headers and parse via PDF.js
     const fetchPdfStream = useCallback(async (signal) => {
         if (!documentId) return;
         setLoading(true);
@@ -111,19 +130,45 @@ export default function PDFViewer({
                 throw new Error(`Failed to load vector PDF (HTTP ${response.status})`);
             }
 
-            const blob = await response.blob();
-            if (blob.size === 0) {
+            const arrayBuffer = await response.arrayBuffer();
+            if (arrayBuffer.byteLength === 0) {
                 throw new Error('Received empty PDF stream');
             }
+
+            setRawPdfBytes(arrayBuffer);
 
             // Clean up previous blob URL
             if (blobUrlRef.current) {
                 URL.revokeObjectURL(blobUrlRef.current);
             }
 
-            const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+            const url = URL.createObjectURL(new Blob([arrayBuffer], { type: 'application/pdf' }));
             blobUrlRef.current = url;
             setBlobUrl(url);
+
+            // Parse document with PDF.js if Web Worker is available (browser environment)
+            const hasWorker = typeof window !== 'undefined' && typeof window.Worker !== 'undefined';
+            if (hasWorker) {
+                try {
+                    const loadingTask = pdfjsLib.getDocument({
+                        data: new Uint8Array(arrayBuffer),
+                        cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/cmaps/',
+                        cMapPacked: true,
+                    });
+                    const doc = await Promise.race([
+                        loadingTask.promise,
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('PDF parse timeout')), 2000))
+                    ]);
+                    setPdfDoc(doc);
+                    setNumPages(doc.numPages);
+                } catch (pdfJsErr) {
+                    console.warn('PDF.js parser fallback to iframe mode:', pdfJsErr);
+                    setViewMode('iframe');
+                }
+            } else {
+                setViewMode('iframe');
+            }
+
             setLoading(false);
         } catch (err) {
             if (err.name === 'AbortError') return;
@@ -155,16 +200,82 @@ export default function PDFViewer({
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, []);
 
+    // Smoothly scroll to the target page element in DOM whenever currentPage or pageNavKey changes
+    const scrollToPage = useCallback((targetPage) => {
+        if (!targetPage) return;
+        const pageEl = document.getElementById(`page-${targetPage}`);
+        if (pageEl && scrollContainerRef.current) {
+            isProgrammaticScrollRef.current = true;
+            pageEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setTimeout(() => {
+                isProgrammaticScrollRef.current = false;
+            }, 800);
+        }
+    }, []);
+
+    // Trigger scroll on pageNavKey changes (Heatmap clicks, MatchCard clicks, or pagination input)
+    useEffect(() => {
+        if (currentPage > 0) {
+            scrollToPage(currentPage);
+        }
+    }, [currentPage, pageNavKey, scrollToPage]);
+
+    // Scroll listener to update currentPage in store as user scrolls manually
+    useEffect(() => {
+        const scrollContainer = scrollContainerRef.current;
+        if (!scrollContainer || viewMode !== 'canvas') return;
+
+        const handleScroll = () => {
+            if (isProgrammaticScrollRef.current) return;
+            const pageElements = scrollContainer.querySelectorAll('.pdf-page');
+            const containerTop = scrollContainer.scrollTop;
+            const containerCenter = containerTop + scrollContainer.clientHeight / 3;
+
+            let closestPage = 1;
+            let minDistance = Infinity;
+
+            pageElements.forEach((el) => {
+                const pageNum = parseInt(el.getAttribute('data-page-number'), 10);
+                const elTop = el.offsetTop - scrollContainer.offsetTop;
+                const distance = Math.abs(elTop - containerCenter);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestPage = pageNum;
+                }
+            });
+
+            if (closestPage && closestPage !== currentPage) {
+                setCurrentPage(closestPage);
+            }
+        };
+
+        let timeoutId = null;
+        const debouncedScroll = () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            timeoutId = setTimeout(handleScroll, 100);
+        };
+
+        scrollContainer.addEventListener('scroll', debouncedScroll, { passive: true });
+        return () => {
+            scrollContainer.removeEventListener('scroll', debouncedScroll);
+            if (timeoutId) clearTimeout(timeoutId);
+        };
+    }, [currentPage, setCurrentPage, viewMode]);
+
     // Page navigation handlers
     const handlePrev = () => {
         if (currentPage > 1) {
-            setCurrentPage(currentPage - 1);
+            const prev = currentPage - 1;
+            setCurrentPage(prev);
+            scrollToPage(prev);
         }
     };
 
     const handleNext = () => {
         if (currentPage < effectiveTotalPages) {
-            setCurrentPage(currentPage + 1);
+            const next = currentPage + 1;
+            setCurrentPage(next);
+            scrollToPage(next);
         }
     };
 
@@ -177,6 +288,7 @@ export default function PDFViewer({
             const val = parseInt(pageInput, 10);
             if (!isNaN(val) && val >= 1 && val <= effectiveTotalPages) {
                 setCurrentPage(val);
+                scrollToPage(val);
             } else {
                 setPageInput(String(currentPage));
             }
@@ -191,6 +303,15 @@ export default function PDFViewer({
         '125': '125%',
         '150': '150%'
     };
+
+    const zoomScales = {
+        fit: 1.15,
+        '100': 1.0,
+        '125': 1.25,
+        '150': 1.5,
+    };
+
+    const currentScale = zoomScales[zoom] || 1.15;
 
     const handleZoomIn = () => {
         const currentIndex = zoomLevels.indexOf(zoom);
@@ -222,21 +343,14 @@ export default function PDFViewer({
 
     // Direct print handler
     const handlePrint = () => {
-        if (iframeRef.current && iframeRef.current.contentWindow) {
-            try {
-                iframeRef.current.contentWindow.focus();
-                iframeRef.current.contentWindow.print();
-                return;
-            } catch (e) {
-                console.warn('Iframe print access restricted, fallback to new window:', e);
-            }
-        }
         if (blobUrl) {
             const printWindow = window.open(blobUrl, '_blank');
             if (printWindow) {
                 printWindow.onload = () => printWindow.print();
+                return;
             }
         }
+        window.print();
     };
 
     // Download fallback
@@ -288,7 +402,7 @@ export default function PDFViewer({
         ? (report?.matches || []).find((m) => String(m.id) === String(selectedMatchId))
         : null;
 
-    // Build PDF open parameter fragment with direct page target
+    // Build PDF open parameter fragment with direct page target for iframe mode
     const getPdfUrl = () => {
         if (!blobUrl) return '';
         let hash = `#page=${currentPage}`;
@@ -302,6 +416,8 @@ export default function PDFViewer({
     };
 
     const currentPdfUrl = getPdfUrl();
+    const renderedPagesCount = pdfDoc ? pdfDoc.numPages : effectiveTotalPages;
+    const pageNumbers = Array.from({ length: renderedPagesCount }, (_, i) => i + 1);
 
     return (
         <div 
@@ -475,8 +591,32 @@ export default function PDFViewer({
                     </div>
                 </div>
 
-                {/* Right: Actions */}
+                {/* Right: View Mode Toggle & Actions */}
                 <div className="flex items-center space-x-1">
+                    {/* View mode toggle */}
+                    <button
+                        type="button"
+                        onClick={() => setViewMode(viewMode === 'canvas' ? 'iframe' : 'canvas')}
+                        className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
+                            viewMode === 'canvas'
+                                ? 'bg-surface border-ghost text-on-surface'
+                                : 'bg-surface-container border-secondary/50 text-secondary'
+                        }`}
+                        title={viewMode === 'canvas' ? 'Switch to native browser PDF plugin' : 'Switch to interactive in-situ viewer'}
+                    >
+                        {viewMode === 'canvas' ? (
+                            <>
+                                <LayoutList className="w-3 h-3 text-secondary" />
+                                <span>In-Situ</span>
+                            </>
+                        ) : (
+                            <>
+                                <FileText className="w-3 h-3 text-on-surface-variant" />
+                                <span>Native PDF</span>
+                            </>
+                        )}
+                    </button>
+
                     <button
                         type="button"
                         onClick={handlePrint}
@@ -520,9 +660,12 @@ export default function PDFViewer({
             </div>
 
             {/* Main Embedded Vector PDF Stage */}
-            <div className="flex-1 overflow-auto bg-neutral-900/90 dark:bg-neutral-950 flex justify-center p-3 sm:p-5 relative">
+            <div 
+                ref={scrollContainerRef}
+                className="flex-1 overflow-y-auto bg-neutral-900/95 dark:bg-neutral-950 flex flex-col items-center p-4 sm:p-6 relative scroll-smooth"
+            >
                 {loading && (
-                    <div className="flex flex-col items-center justify-center h-full text-neutral-300 font-mono tracking-widest text-xs space-y-3">
+                    <div className="flex flex-col items-center justify-center h-full text-neutral-300 font-mono tracking-widest text-xs space-y-3 my-auto">
                         <Loader2 className="w-8 h-8 animate-spin text-primary" />
                         <div className="font-semibold tracking-wider text-neutral-200">Loading vector PDF stream...</div>
                         <div className="text-[11px] text-neutral-400">Rendering in-situ forensic highlights & vector coordinates</div>
@@ -530,7 +673,7 @@ export default function PDFViewer({
                 )}
 
                 {error && !loading && (
-                    <div className="flex flex-col items-center justify-center h-full max-w-md mx-auto p-6 text-center">
+                    <div className="flex flex-col items-center justify-center h-full max-w-md mx-auto p-6 text-center my-auto">
                         <div className="w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-500 mb-4">
                             <AlertTriangle className="w-6 h-6" />
                         </div>
@@ -559,7 +702,24 @@ export default function PDFViewer({
                     </div>
                 )}
 
-                {blobUrl && !loading && !error && (
+                {/* View Mode 1: High-Fidelity In-Situ DOM Canvas Pages */}
+                {viewMode === 'canvas' && !loading && !error && (
+                    <div className="flex flex-col items-center w-full max-w-full">
+                        {pageNumbers.map((pNum) => (
+                            <PDFPage
+                                key={`pdf-page-${pNum}`}
+                                pageNumber={pNum}
+                                pdfDoc={pdfDoc}
+                                scale={currentScale}
+                                isTargetPage={currentPage === pNum}
+                                selectedMatch={selectedMatch && selectedMatch.submitted_page === pNum ? selectedMatch : null}
+                            />
+                        ))}
+                    </div>
+                )}
+
+                {/* View Mode 2: Native PDF Plugin Iframe */}
+                {viewMode === 'iframe' && blobUrl && !loading && !error && (
                     <div 
                         className={`transition-all duration-150 h-full flex justify-center ${
                             zoom === 'fit' ? 'w-full max-w-full' :

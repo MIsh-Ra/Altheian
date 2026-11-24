@@ -16,10 +16,18 @@ describe('PDFViewer Component', () => {
         globalThis.URL.createObjectURL = mockCreate;
         globalThis.URL.revokeObjectURL = mockRevoke;
 
+        // Mock IntersectionObserver
+        globalThis.IntersectionObserver = class {
+            observe() {}
+            unobserve() {}
+            disconnect() {}
+        };
+
         // Successful PDF stream response
         global.fetch = vi.fn().mockResolvedValue({
             ok: true,
             status: 200,
+            arrayBuffer: async () => new ArrayBuffer(1024),
             blob: async () => ({
                 size: 1024,
                 type: 'application/pdf'
@@ -27,7 +35,7 @@ describe('PDFViewer Component', () => {
         });
     });
 
-    it('renders vector PDF iframe with direct page target and dynamic navigation key', async () => {
+    it('renders vector PDF iframe with direct page target and navigation controls', async () => {
         const mockReport = {
             id: 'rep-1',
             page_count: 5,
@@ -41,10 +49,11 @@ describe('PDFViewer Component', () => {
                 documentId="doc-123"
                 totalPages={5}
                 report={mockReport}
+                initialViewMode="iframe"
             />
         );
 
-        // Wait for PDF blob to load and iframe to mount
+        // Wait for PDF stream to load and iframe to mount
         await waitFor(() => {
             const iframe = container.querySelector('iframe');
             expect(iframe).not.toBeNull();
@@ -52,7 +61,7 @@ describe('PDFViewer Component', () => {
         });
     });
 
-    it('updates iframe target and displays active match feedback when match is selected', async () => {
+    it('displays active match feedback banner and updates target page when match is selected', async () => {
         const mockReport = {
             id: 'rep-1',
             page_count: 10,
@@ -70,6 +79,7 @@ describe('PDFViewer Component', () => {
                 documentId="doc-123"
                 totalPages={10}
                 report={mockReport}
+                initialViewMode="iframe"
             />
         );
 
@@ -78,6 +88,37 @@ describe('PDFViewer Component', () => {
             expect(iframe).not.toBeNull();
             expect(iframe.src).toContain('blob:http://localhost:5173/mock-pdf-blob#page=4');
             expect(screen.getByText(/Match on p\.4/i)).toBeInTheDocument();
+        });
+    });
+
+    it('supports toggling between in-situ document view and native PDF plugin', async () => {
+        const mockReport = {
+            id: 'rep-1',
+            page_count: 3,
+            matches: []
+        };
+
+        const { container } = render(
+            <PDFViewer
+                documentId="doc-123"
+                totalPages={3}
+                report={mockReport}
+                initialViewMode="iframe"
+            />
+        );
+
+        await waitFor(() => {
+            const iframe = container.querySelector('iframe');
+            expect(iframe).not.toBeNull();
+        });
+
+        // Click toggle button to switch modes
+        const toggleBtn = screen.getByTitle(/Switch to interactive in-situ viewer/i);
+        toggleBtn.click();
+
+        await waitFor(() => {
+            expect(container.querySelector('#page-1')).not.toBeNull();
+            expect(container.querySelector('#page-3')).not.toBeNull();
         });
     });
 });
