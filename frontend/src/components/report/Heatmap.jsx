@@ -49,12 +49,6 @@ export default function Heatmap({ pages }) {
 
     const handlePageClick = (pageNum) => {
         setCurrentPage(pageNum);
-        setTimeout(() => {
-            const el = document.getElementById(`page-${pageNum}`);
-            if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        }, 50);
     };
 
     return (

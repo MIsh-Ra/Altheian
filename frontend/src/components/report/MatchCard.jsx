@@ -16,12 +16,6 @@ export default function MatchCard({ match, onUpdate }) {
         setSelectedMatch(match.id);
         if (match.submitted_page && setCurrentPage) {
             setCurrentPage(match.submitted_page);
-            setTimeout(() => {
-                const el = document.getElementById(`page-${match.submitted_page}`);
-                if (el) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            }, 30);
         }
     };
 
@@ -89,9 +83,16 @@ export default function MatchCard({ match, onUpdate }) {
                     {match.exclude_reason || `Exempted from penalty (Page ${match.submitted_page})`}
                 </p>
 
-                <p className="text-xs text-on-surface-variant font-serif line-clamp-2 pl-2 border-l border-ghost">
+                <p className="text-xs text-on-surface-variant font-serif line-clamp-2 pl-2 border-l border-ghost mb-2">
                     "{match.submitted_text}"
                 </p>
+
+                {match.submitted_page && (
+                    <div className="flex items-center justify-between text-[10px] font-mono text-on-surface-variant pt-1.5 border-t border-ghost/60">
+                        <span className="bg-surface-container px-1.5 py-0.5 rounded">PAGE {match.submitted_page}</span>
+                        <span>Click to jump to highlight →</span>
+                    </div>
+                )}
             </div>
         );
     }

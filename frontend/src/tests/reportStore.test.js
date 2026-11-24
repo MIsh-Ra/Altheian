@@ -71,10 +71,16 @@ describe('reportStore', () => {
         expect(useReportStore.getState().currentPage).toBe(5);
         expect(useReportStore.getState().pageNavKey).toBe(1);
 
-        // Setting the same page still increments pageNavKey to re-trigger iframe navigation
+        // Setting the same page still increments pageNavKey to re-trigger navigation
         setCurrentPage(5);
         expect(useReportStore.getState().currentPage).toBe(5);
         expect(useReportStore.getState().pageNavKey).toBe(2);
+
+        // Selecting a match or AI window also bumps pageNavKey for same-page match panning
+        useReportStore.getState().setSelectedMatch('m-1');
+        expect(useReportStore.getState().pageNavKey).toBe(3);
+        useReportStore.getState().setSelectedWindow(4);
+        expect(useReportStore.getState().pageNavKey).toBe(4);
     });
 });
 

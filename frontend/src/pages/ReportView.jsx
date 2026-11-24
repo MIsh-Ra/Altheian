@@ -49,7 +49,8 @@ export default function ReportView() {
         activeTab = 'plagiarism',
         setActiveTab,
         setAIDetectionResult,
-        aiDetectionResult
+        aiDetectionResult,
+        resetReportStore
     } = useReportStore();
     const [reviewed, setReviewed] = useState(report?.review?.status === 'reviewed');
     const [reviewing, setReviewing] = useState(false);
@@ -68,6 +69,11 @@ export default function ReportView() {
             setReviewing(false);
         }
     };
+
+    // Reset store cleanly when switching between reports
+    useEffect(() => {
+        if (resetReportStore) resetReportStore();
+    }, [id, resetReportStore]);
 
     // When a match is selected, sync doc viewer to that match page and open diff
     useEffect(() => {

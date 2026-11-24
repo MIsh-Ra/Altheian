@@ -22,6 +22,7 @@ import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { useReportStore } from '../../stores/reportStore';
 import Client from '../../api/client';
 import PDFPage from './PDFPage';
+import { locateTextOnPdfPage } from '../../utils/pdfMatchLocator';
 
 // Configure pdfjs worker source in browser environments
 if (typeof window !== 'undefined' && window.Worker && pdfjsLib.GlobalWorkerOptions) {
@@ -42,11 +43,14 @@ export default function PDFViewer({
         pageNavKey = 0,
         selectedMatchId,
         setSelectedMatch,
+        selectedWindowIndex,
         aiDetectionResult
     } = useReportStore();
 
     const [pdfDoc, setPdfDoc] = useState(null);
     const [numPages, setNumPages] = useState(0);
+    const [pageDimensions, setPageDimensions] = useState({});
+    const [focusTarget, setFocusTarget] = useState(null);
     const [blobUrl, setBlobUrl] = useState(null);
     const [rawPdfBytes, setRawPdfBytes] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -66,6 +70,7 @@ export default function PDFViewer({
     const iframeRef = useRef(null);
     const blobUrlRef = useRef(null);
     const isProgrammaticScrollRef = useRef(false);
+    const scrollUnlockTimerRef = useRef(null);
 
     // Synchronize page input when currentPage changes externally
     useEffect(() => {
@@ -150,17 +155,37 @@ export default function PDFViewer({
             const hasWorker = typeof window !== 'undefined' && typeof window.Worker !== 'undefined';
             if (hasWorker) {
                 try {
+                    const pdfjsVer = pdfjsLib.version || '6.5.438';
                     const loadingTask = pdfjsLib.getDocument({
                         data: new Uint8Array(arrayBuffer),
-                        cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/cmaps/',
+                        cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsVer}/cmaps/`,
                         cMapPacked: true,
                     });
                     const doc = await Promise.race([
                         loadingTask.promise,
-                        new Promise((_, reject) => setTimeout(() => reject(new Error('PDF parse timeout')), 2000))
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('PDF parse timeout')), 15000))
                     ]);
                     setPdfDoc(doc);
                     setNumPages(doc.numPages);
+
+                    // Pre-fetch all page dimensions immediately so unrendered placeholders never shift height during scroll
+                    const pageNums = Array.from({ length: doc.numPages }, (_, i) => i + 1);
+                    const dimEntries = await Promise.all(
+                        pageNums.map(async (pNum) => {
+                            try {
+                                const page = await doc.getPage(pNum);
+                                const vp = page.getViewport({ scale: 1 });
+                                return [pNum, { width: vp.width, height: vp.height }];
+                            } catch {
+                                return [pNum, null];
+                            }
+                        })
+                    );
+                    const dimsMap = {};
+                    for (const [pNum, dim] of dimEntries) {
+                        if (dim) dimsMap[pNum] = dim;
+                    }
+                    setPageDimensions(dimsMap);
                 } catch (pdfJsErr) {
                     console.warn('PDF.js parser fallback to iframe mode:', pdfJsErr);
                     setViewMode('iframe');
@@ -200,25 +225,90 @@ export default function PDFViewer({
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, []);
 
-    // Smoothly scroll to the target page element in DOM whenever currentPage or pageNavKey changes
-    const scrollToPage = useCallback((targetPage) => {
-        if (!targetPage) return;
-        const pageEl = document.getElementById(`page-${targetPage}`);
-        if (pageEl && scrollContainerRef.current) {
-            isProgrammaticScrollRef.current = true;
-            pageEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            setTimeout(() => {
-                isProgrammaticScrollRef.current = false;
-            }, 800);
-        }
-    }, []);
+    const zoomScales = {
+        fit: 1.15,
+        '100': 1.0,
+        '125': 1.25,
+        '150': 1.5,
+    };
+    const activeScale = zoomScales[zoom] || 1.15;
 
-    // Trigger scroll on pageNavKey changes (Heatmap clicks, MatchCard clicks, or pagination input)
+    const currentAiData = report?.ai_detection || aiDetectionResult;
+    const aiWindowsList = currentAiData?.windows || currentAiData?.elevated_windows || [];
+    const activeSelectedMatch = selectedMatchId
+        ? (report?.matches || []).find((m) => String(m.id) === String(selectedMatchId))
+        : null;
+    const activeSelectedWindow = selectedWindowIndex != null
+        ? (aiWindowsList.find((w, idx) => (w.window_index ?? idx) === selectedWindowIndex) || aiWindowsList[selectedWindowIndex] || null)
+        : null;
+
+    // Deterministically scroll container to the target page and, when a match/AI passage is selected,
+    // pan directly to center that highlighted passage in the viewport.
+    const scrollToPage = useCallback(async (targetPage) => {
+        if (!targetPage || loading || viewMode !== 'canvas') return;
+        const container = scrollContainerRef.current;
+        const pageEl = document.getElementById(`page-${targetPage}`);
+        if (!container || !pageEl) return;
+
+        // Clear any pending scroll unlock
+        if (scrollUnlockTimerRef.current) {
+            clearTimeout(scrollUnlockTimerRef.current);
+            scrollUnlockTimerRef.current = null;
+        }
+
+        const pageTopInContainer =
+            container.scrollTop + (pageEl.getBoundingClientRect().top - container.getBoundingClientRect().top);
+
+        // Determine active excerpt on target page (plagiarism match or AI writing window)
+        let activeExcerpt = null;
+        if (activeTab !== 'ai_detection' && activeSelectedMatch && activeSelectedMatch.submitted_page === targetPage) {
+            activeExcerpt = activeSelectedMatch.submitted_text;
+        } else if (activeTab === 'ai_detection' && activeSelectedWindow && activeSelectedWindow.page_number === targetPage) {
+            activeExcerpt = activeSelectedWindow.excerpt || activeSelectedWindow.text;
+        }
+
+        let targetScrollTop = Math.max(0, pageTopInContainer - 16);
+        let resolvedBox = null;
+
+        if (activeExcerpt && pdfDoc) {
+            try {
+                const pdfPage = await pdfDoc.getPage(targetPage);
+                resolvedBox = await locateTextOnPdfPage(pdfPage, activeExcerpt);
+                if (resolvedBox) {
+                    const passageTop = pageTopInContainer + resolvedBox.top * activeScale;
+                    const viewportOffset = Math.max(40, container.clientHeight * 0.25);
+                    targetScrollTop = Math.max(0, passageTop - viewportOffset);
+                }
+            } catch {
+                resolvedBox = null;
+            }
+        }
+
+        setFocusTarget(resolvedBox ? { pageNumber: targetPage, box: resolvedBox } : null);
+
+        isProgrammaticScrollRef.current = true;
+        const distance = Math.abs(targetScrollTop - (container.scrollTop || 0));
+        if (typeof container.scrollTo === 'function') {
+            container.scrollTo({
+                top: targetScrollTop,
+                behavior: distance > 3500 ? 'auto' : 'smooth',
+            });
+        } else {
+            container.scrollTop = targetScrollTop;
+        }
+
+        scrollUnlockTimerRef.current = setTimeout(() => {
+            isProgrammaticScrollRef.current = false;
+            scrollUnlockTimerRef.current = null;
+        }, distance > 3500 ? 150 : 950);
+    }, [loading, viewMode, activeTab, activeSelectedMatch, activeSelectedWindow, pdfDoc, activeScale]);
+
+    // Trigger scroll on navigation, selection, or PDF ready state changes
     useEffect(() => {
-        if (currentPage > 0) {
+        if (!loading && viewMode === 'canvas' && currentPage > 0) {
             scrollToPage(currentPage);
         }
-    }, [currentPage, pageNavKey, scrollToPage]);
+    }, [currentPage, pageNavKey, selectedMatchId, selectedWindowIndex, loading, viewMode, pageDimensions, scrollToPage]);
 
     // Scroll listener to update currentPage in store as user scrolls manually
     useEffect(() => {
@@ -228,16 +318,18 @@ export default function PDFViewer({
         const handleScroll = () => {
             if (isProgrammaticScrollRef.current) return;
             const pageElements = scrollContainer.querySelectorAll('.pdf-page');
-            const containerTop = scrollContainer.scrollTop;
-            const containerCenter = containerTop + scrollContainer.clientHeight / 3;
+            const containerRect = scrollContainer.getBoundingClientRect();
+            const probeY = containerRect.top + containerRect.height / 3;
 
             let closestPage = 1;
             let minDistance = Infinity;
 
             pageElements.forEach((el) => {
                 const pageNum = parseInt(el.getAttribute('data-page-number'), 10);
-                const elTop = el.offsetTop - scrollContainer.offsetTop;
-                const distance = Math.abs(elTop - containerCenter);
+                const rect = el.getBoundingClientRect();
+                const centerDistance = Math.abs((rect.top + rect.bottom) / 2 - probeY);
+                const topDistance = Math.abs(rect.top - containerRect.top);
+                const distance = rect.top <= probeY && rect.bottom >= probeY ? 0 : Math.min(centerDistance, topDistance);
                 if (distance < minDistance) {
                     minDistance = distance;
                     closestPage = pageNum;
@@ -265,17 +357,13 @@ export default function PDFViewer({
     // Page navigation handlers
     const handlePrev = () => {
         if (currentPage > 1) {
-            const prev = currentPage - 1;
-            setCurrentPage(prev);
-            scrollToPage(prev);
+            setCurrentPage(currentPage - 1);
         }
     };
 
     const handleNext = () => {
         if (currentPage < effectiveTotalPages) {
-            const next = currentPage + 1;
-            setCurrentPage(next);
-            scrollToPage(next);
+            setCurrentPage(currentPage + 1);
         }
     };
 
@@ -288,7 +376,6 @@ export default function PDFViewer({
             const val = parseInt(pageInput, 10);
             if (!isNaN(val) && val >= 1 && val <= effectiveTotalPages) {
                 setCurrentPage(val);
-                scrollToPage(val);
             } else {
                 setPageInput(String(currentPage));
             }
@@ -304,14 +391,7 @@ export default function PDFViewer({
         '150': '150%'
     };
 
-    const zoomScales = {
-        fit: 1.15,
-        '100': 1.0,
-        '125': 1.25,
-        '150': 1.5,
-    };
-
-    const currentScale = zoomScales[zoom] || 1.15;
+    const currentScale = activeScale;
 
     const handleZoomIn = () => {
         const currentIndex = zoomLevels.indexOf(zoom);
@@ -711,8 +791,10 @@ export default function PDFViewer({
                                 pageNumber={pNum}
                                 pdfDoc={pdfDoc}
                                 scale={currentScale}
+                                baseSize={pageDimensions[pNum] || null}
                                 isTargetPage={currentPage === pNum}
                                 selectedMatch={selectedMatch && selectedMatch.submitted_page === pNum ? selectedMatch : null}
+                                focusBox={focusTarget && focusTarget.pageNumber === pNum ? focusTarget.box : null}
                             />
                         ))}
                     </div>

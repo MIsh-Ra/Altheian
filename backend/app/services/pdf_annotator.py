@@ -491,7 +491,30 @@ def annotate_document_pdf(
         annot.update()
 
     # Step 4: Plagiarism Passages & Excluded Citations with Elastic Page Location
-    for match_idx, m in enumerate(matches, start=1):
+    drawn_highlight_rects: dict[int, list[pymupdf.Rect]] = {}
+
+    def _filter_novel_rects(p_idx: int, rects: list[pymupdf.Rect]) -> list[pymupdf.Rect]:
+        existing = drawn_highlight_rects.setdefault(p_idx, [])
+        novel: list[pymupdf.Rect] = []
+        for r in rects:
+            is_dup = False
+            for ex in existing:
+                inter = r & ex
+                if not inter.is_empty and r.get_area() > 0:
+                    if (inter.get_area() / r.get_area()) >= 0.70:
+                        is_dup = True
+                        break
+            if not is_dup:
+                novel.append(r)
+                existing.append(r)
+        return novel
+
+    # Process active plagiarism matches before excluded drafts so active highlights take precedence
+    ordered_matches = sorted(
+        enumerate(matches, start=1),
+        key=lambda pair: bool(pair[1].get("is_excluded")),
+    )
+    for match_idx, m in ordered_matches:
         sub_text = (m.get("submitted_text") or "").strip()
         if not sub_text:
             continue
@@ -521,10 +544,17 @@ def annotate_document_pdf(
             annot.update()
             continue
 
-        # Author Draft Exemption: Soft highlight with informational note
+        # Author Draft Exemption: Soft highlight with informational note (deduplicated so text stays readable)
         if is_excluded and ("draft" in exclude_reason or "prior submission" in exclude_reason):
-            annot = page.add_highlight_annot(rects)
+            novel_rects = _filter_novel_rects(found_page_idx, rects)
+            if not novel_rects:
+                continue
+            annot = page.add_highlight_annot(novel_rects)
             annot.set_colors(stroke=(0.20, 0.60, 0.90))
+            try:
+                annot.set_opacity(0.32)
+            except Exception:
+                pass
             annot.set_info(
                 title=f"Author's Previous Draft [{match_idx}] (Exempted)",
                 content="Student's own earlier submission - isolated from plagiarism penalty.",
@@ -535,6 +565,10 @@ def annotate_document_pdf(
             continue
 
         # (b) Active Plagiarism Matches: Red (archive) vs Orange (paraphrase) vs Blue (web)
+        novel_rects = _filter_novel_rects(found_page_idx, rects)
+        if not novel_rects:
+            continue
+
         mtype = (m.get("type") or "").lower()
         src_type = ((m.get("source") or {}).get("type") or "").lower()
         is_paraphrase = "paraphrase" in mtype
@@ -551,8 +585,12 @@ def annotate_document_pdf(
             color = RGB_ARCHIVE if is_turnitin else RGB_VERBATIM
             mtype_title = "Archive / Institutional Match" if is_turnitin else ("Identical Match (Verbatim)" if is_exact else "Paraphrased / Modified Match")
 
-        annot = page.add_highlight_annot(rects)
+        annot = page.add_highlight_annot(novel_rects)
         annot.set_colors(stroke=color)
+        try:
+            annot.set_opacity(0.42)
+        except Exception:
+            pass
         annot.set_info(
             title=f"Source Match [{match_idx}] — {mtype_title}",
             content=f"{sim}% match with {src_title}",
@@ -562,7 +600,7 @@ def annotate_document_pdf(
         annot.update()
 
         # Turnitin-style margin badge (NO opaque sticky note blobs covering text!)
-        first_rect = rects[0]
+        first_rect = novel_rects[0]
         try:
             badge_x = max(12.0, first_rect.x0 - 18.0)
             badge_y = max(14.0, first_rect.y0 + 2.0)
