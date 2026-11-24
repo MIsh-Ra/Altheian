@@ -4,15 +4,30 @@ export default function PDFPage({
     pageNumber,
     pdfDoc,
     scale = 1.25,
+    baseSize = null,
     isTargetPage = false,
     selectedMatch = null,
+    focusBox = null,
 }) {
     const canvasRef = useRef(null);
     const containerRef = useRef(null);
     const renderTaskRef = useRef(null);
     const [isRendered, setIsRendered] = useState(false);
     const [isInView, setIsInView] = useState(false);
-    const [pageSize, setPageSize] = useState({ width: 612 * scale, height: 792 * scale });
+    const [pageSize, setPageSize] = useState({
+        width: (baseSize?.width || 612) * scale,
+        height: (baseSize?.height || 792) * scale,
+    });
+
+    // Keep placeholder page dimensions synchronized with pre-loaded viewport & zoom scale
+    useEffect(() => {
+        if (baseSize?.width && baseSize?.height) {
+            setPageSize({
+                width: baseSize.width * scale,
+                height: baseSize.height * scale,
+            });
+        }
+    }, [baseSize?.width, baseSize?.height, scale]);
 
     // Viewport intersection observer: only render canvas when near or in viewport
     useEffect(() => {
@@ -130,14 +145,25 @@ export default function PDFPage({
 
             {!isRendered && (
                 <div
-                    className="absolute inset-0 flex items-center justify-center bg-white/90 text-neutral-400 font-mono text-xs"
+                    className="absolute inset-0 flex items-center justify-center bg-white/95 text-neutral-400 font-mono text-xs"
                     style={{ width: `${pageSize.width}px`, height: `${pageSize.height}px` }}
                 >
-                    <div className="flex items-center space-x-2">
-                        <span className="w-2 h-2 rounded-full bg-primary animate-ping"></span>
-                        <span>Page {pageNumber}</span>
-                    </div>
+                    <span>Page {pageNumber}</span>
                 </div>
+            )}
+
+            {/* Focused Passage Highlight Frame */}
+            {isTargetPage && focusBox && (
+                <div
+                    data-testid={`focus-box-p${pageNumber}`}
+                    className="absolute pointer-events-none border-2 border-secondary bg-secondary/10 rounded-xs shadow-sm transition-all duration-200 z-10"
+                    style={{
+                        left: `${focusBox.left * scale}px`,
+                        top: `${focusBox.top * scale}px`,
+                        width: `${focusBox.width * scale}px`,
+                        height: `${focusBox.height * scale}px`,
+                    }}
+                />
             )}
 
             {/* Bottom Page Tag */}

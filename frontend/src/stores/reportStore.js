@@ -22,7 +22,7 @@ const initialState = {
 export const useReportStore = create((set, get) => ({
     ...initialState,
     
-    setSelectedMatch: (id) => set({ selectedMatchId: id }),
+    setSelectedMatch: (id) => set((state) => ({ selectedMatchId: id, pageNavKey: (state.pageNavKey || 0) + 1 })),
     setSelectedSource: (id) => set({ selectedSourceId: id }),
     setCurrentPage: (n) => set((state) => ({ currentPage: n, pageNavKey: (state.pageNavKey || 0) + 1 })),
     toggleFilterType: (type) => set((state) => ({
@@ -35,7 +35,7 @@ export const useReportStore = create((set, get) => ({
     // AI Detection Actions
     setActiveTab: (activeTab) => set({ activeTab }),
     setAIDetectionResult: (aiDetectionResult) => set({ aiDetectionResult }),
-    setSelectedWindow: (idx) => set({ selectedWindowIndex: idx }),
+    setSelectedWindow: (idx) => set((state) => ({ selectedWindowIndex: idx, pageNavKey: (state.pageNavKey || 0) + 1 })),
     setSelectedParagraph: (idx) => set({ selectedParagraphIndex: idx }),
     setShowTamperDrawer: (showTamperDrawer) => set({ showTamperDrawer }),
     resetReportStore: () => set({ ...initialState })
