@@ -12,7 +12,8 @@ import {
     CheckSquare, 
     Square, 
     AlertTriangle, 
-    Loader2 
+    Loader2,
+    X
 } from 'lucide-react';
 import { useReportStore } from '../../stores/reportStore';
 import Client from '../../api/client';
@@ -27,6 +28,9 @@ export default function PDFViewer({
     const { 
         currentPage = 1, 
         setCurrentPage,
+        pageNavKey = 0,
+        selectedMatchId,
+        setSelectedMatch,
         aiDetectionResult
     } = useReportStore();
 
@@ -78,7 +82,7 @@ export default function PDFViewer({
 
         try {
             const apiUrl = import.meta.env.VITE_API_URL || '/api/v1';
-            const token = localStorage.getItem('alethian_token');
+            const token = typeof window !== 'undefined' && window.localStorage ? window.localStorage.getItem('alethian_token') : null;
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
             // 1. Primary vector streaming endpoint
@@ -279,7 +283,12 @@ export default function PDFViewer({
         return p >= 0.25 || w.risk_level === 'HIGH' || w.risk_level === 'ELEVATED';
     }).length;
 
-    // Build PDF open parameter fragment
+    // Resolve active match if selected from detected matches sidebar
+    const selectedMatch = selectedMatchId
+        ? (report?.matches || []).find((m) => String(m.id) === String(selectedMatchId))
+        : null;
+
+    // Build PDF open parameter fragment with direct page target
     const getPdfUrl = () => {
         if (!blobUrl) return '';
         let hash = `#page=${currentPage}`;
@@ -292,20 +301,7 @@ export default function PDFViewer({
         return `${blobUrl}${hash}`;
     };
 
-    // Smoothly update PDF iframe navigation without destroying the DOM iframe
-    useEffect(() => {
-        if (!iframeRef.current || !blobUrl) return;
-        const targetUrl = getPdfUrl();
-        try {
-            if (iframeRef.current.contentWindow && iframeRef.current.src) {
-                iframeRef.current.contentWindow.location.replace(targetUrl);
-            } else {
-                iframeRef.current.src = targetUrl;
-            }
-        } catch {
-            iframeRef.current.src = targetUrl;
-        }
-    }, [currentPage, zoom, blobUrl]);
+    const currentPdfUrl = getPdfUrl();
 
     return (
         <div 
@@ -356,6 +352,22 @@ export default function PDFViewer({
                         >
                             <ChevronRight className="w-4 h-4" />
                         </button>
+
+                        {selectedMatch && (
+                            <div className="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-surface border border-secondary/40 text-[11px] text-on-surface shadow-2xs ml-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                                <span className="font-mono text-on-surface-variant font-medium">Match on p.{selectedMatch.submitted_page}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedMatch && setSelectedMatch(null)}
+                                    className="text-on-surface-variant hover:text-on-surface ml-0.5 p-0.5 rounded cursor-pointer"
+                                    title="Clear match focus"
+                                    aria-label="Clear match focus"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="h-3.5 w-px bg-ghost hidden sm:block" />
@@ -558,8 +570,8 @@ export default function PDFViewer({
                     >
                         <iframe
                             ref={iframeRef}
-                            key={`pdf-${blobUrl}`}
-                            src={pdfUrl}
+                            key={`pdf-frame-${blobUrl}-p${currentPage}-nav${pageNavKey}-${zoom}`}
+                            src={currentPdfUrl}
                             title="Alethian Forensic Vector PDF Document"
                             className="w-full h-full border-0 rounded-xs shadow-2xl bg-white"
                         />
