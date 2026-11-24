@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     SERPER_TIMEOUT: int = 10              # Timeout for Serper API requests
     MAX_DRAGNET_SUSPICIOUS: int = 15      # Max suspicious chunks to send to web search
     
-    UPLOAD_DIR: str = ""  # If empty, uses <project_root>/uploads; can be set to a shared volume path
+    UPLOAD_DIR: str = str(Path(__file__).resolve().parents[3] / "uploads")
 
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:

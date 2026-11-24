@@ -87,11 +87,27 @@ def analyze_document(self, document_id: str, file_path: str):
             except Exception as e:
                 logger.warning(f"Failed to compute file_hash: {e}")
 
-        # Ensure file_path is recorded in meta_data
+        # Ensure permanent backup copy in archive directory
+        try:
+            from pathlib import Path
+            import shutil
+            fp_path = Path(file_path)
+            archive_dir = fp_path.parent / "archive"
+            archive_dir.mkdir(parents=True, exist_ok=True)
+            if doc.file_hash:
+                archive_file = archive_dir / f"{doc.file_hash}.pdf"
+                if not archive_file.exists() or archive_file.stat().st_size == 0:
+                    shutil.copy2(file_path, archive_file)
+        except Exception as e:
+            logger.warning(f"Failed to ensure archive copy: {e}")
+
+        # Ensure file_path and archive_path are recorded in meta_data
         meta = dict(doc.meta_data or {})
-        if not meta.get("file_path"):
-            meta["file_path"] = str(file_path)
-            doc.meta_data = meta
+        meta["file_path"] = os.path.abspath(file_path)
+        if doc.file_hash:
+            meta["archive_path"] = os.path.abspath(str(fp_path.parent / "archive" / f"{doc.file_hash}.pdf"))
+            meta["file_hash"] = doc.file_hash
+        doc.meta_data = meta
 
         doc.status = DocumentStatus.processing
         db.commit()

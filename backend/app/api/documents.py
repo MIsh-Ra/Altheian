@@ -96,14 +96,29 @@ async def upload_document(
         doc_id = str(uuid.uuid4())
         safe_name = re.sub(r'[^\w\-.]', '_', file.filename.split('/')[-1].split('\\')[-1])
         # Use a persistent upload directory shared between API and Celery worker
-        if getattr(settings, "UPLOAD_DIR", None):
-            upload_dir = Path(settings.UPLOAD_DIR)
-        else:
-            upload_dir = Path(__file__).resolve().parents[3] / "uploads"
+        base_upload = getattr(settings, "UPLOAD_DIR", None)
+        upload_dir = Path(base_upload).resolve() if base_upload else (Path(__file__).resolve().parents[3] / "uploads").resolve()
+        archive_dir = upload_dir / "archive"
         upload_dir.mkdir(parents=True, exist_ok=True)
+        archive_dir.mkdir(parents=True, exist_ok=True)
+
         file_path = str(upload_dir / f"{doc_id}_{safe_name}")
+        archive_path = str(archive_dir / f"{file_hash}.pdf")
+
+        # Atomic dual-write with explicit fsync to guarantee storage persistence
         with open(file_path, "wb") as f:
             f.write(content)
+            f.flush()
+            os.fsync(f.fileno())
+
+        if not os.path.exists(archive_path) or os.path.getsize(archive_path) == 0:
+            with open(archive_path, "wb") as f:
+                f.write(content)
+                f.flush()
+                os.fsync(f.fileno())
+
+        abs_file_path = os.path.abspath(file_path)
+        abs_archive_path = os.path.abspath(archive_path)
 
         new_doc = Document(
             id=doc_id,
@@ -116,7 +131,9 @@ async def upload_document(
             upload_date=datetime.datetime.now(datetime.timezone.utc),
             status=DocumentStatus.pending,
             meta_data={
-                "file_path": file_path,
+                "file_path": abs_file_path,
+                "archive_path": abs_archive_path,
+                "file_hash": file_hash,
                 "safe_name": safe_name,
                 "original_filename": file.filename,
             },

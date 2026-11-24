@@ -127,6 +127,7 @@ def find_original_pdf_path(
 
     # Extract identification hints
     file_path = None
+    archive_path = None
     doc_id = None
     filename = None
     file_hash = None
@@ -136,73 +137,93 @@ def find_original_pdf_path(
             file_path = str(doc_obj.file_path)
         if getattr(doc_obj, "meta_data", None) and isinstance(doc_obj.meta_data, dict):
             file_path = file_path or doc_obj.meta_data.get("file_path")
+            archive_path = doc_obj.meta_data.get("archive_path")
+            file_hash = file_hash or doc_obj.meta_data.get("file_hash")
         doc_id = getattr(doc_obj, "id", None)
         filename = getattr(doc_obj, "filename", None)
-        file_hash = getattr(doc_obj, "file_hash", None)
+        file_hash = file_hash or getattr(doc_obj, "file_hash", None)
 
     if report_data:
         meta = report_data.get("meta_data") or {}
-        if isinstance(meta, dict) and not file_path:
-            file_path = meta.get("file_path")
+        if isinstance(meta, dict):
+            file_path = file_path or meta.get("file_path")
+            archive_path = archive_path or meta.get("archive_path")
+            file_hash = file_hash or meta.get("file_hash")
         doc_id = doc_id or report_data.get("document_id")
         filename = filename or report_data.get("filename")
         file_hash = file_hash or report_data.get("file_hash")
 
-    if file_path:
-        p = Path(file_path)
-        if p.is_file():
-            return p
+    for direct_candidate in (file_path, archive_path):
+        if direct_candidate:
+            p = Path(direct_candidate)
+            if p.is_file() and p.stat().st_size > 0:
+                return p
 
     # Candidate directories
     base_dirs: list[Path] = []
     if getattr(settings, "UPLOAD_DIR", None):
         base_dirs.append(Path(settings.UPLOAD_DIR))
+        base_dirs.append(Path(settings.UPLOAD_DIR) / "archive")
 
     curr_file = Path(__file__).resolve()
-    for idx in (2, 3):
+    for idx in (2, 3, 4):
         if idx < len(curr_file.parents):
             root_candidate = curr_file.parents[idx]
             base_dirs.append(root_candidate / "uploads")
+            base_dirs.append(root_candidate / "uploads" / "archive")
             base_dirs.append(root_candidate / "test_documents")
             base_dirs.append(root_candidate / "Alethian_documents")
             base_dirs.append(root_candidate / "backend" / "uploads")
+            base_dirs.append(root_candidate / "backend" / "uploads" / "archive")
 
     # De-duplicate while preserving order
     candidate_dirs = [d for i, d in enumerate(base_dirs) if d.is_dir() and d not in base_dirs[:i]]
 
-    # 2. Match by doc_id prefix/contains
+    # 2. Fast O(1) content-addressable match in archive directories
+    if file_hash:
+        target_hash = file_hash.lower()
+        for cdir in candidate_dirs:
+            direct_hash_file = cdir / f"{target_hash}.pdf"
+            if direct_hash_file.is_file() and direct_hash_file.stat().st_size > 0:
+                return direct_hash_file
+            direct_archive_file = cdir / "archive" / f"{target_hash}.pdf"
+            if direct_archive_file.is_file() and direct_archive_file.stat().st_size > 0:
+                return direct_archive_file
+
+    # 3. Match by doc_id prefix/contains
     if doc_id:
         for cdir in candidate_dirs:
             for m in cdir.glob(f"*{doc_id}*"):
-                if m.is_file() and m.suffix.lower() == ".pdf":
+                if m.is_file() and m.suffix.lower() == ".pdf" and m.stat().st_size > 0:
                     return m
 
-    # 3. Match by filename / sanitized filename
+    # 4. Match by filename / sanitized filename
     if filename:
         clean_name = Path(filename).name
         safe_name = re.sub(r"[^\w\-.]", "_", clean_name)
         for cdir in candidate_dirs:
             exact = cdir / clean_name
-            if exact.is_file():
+            if exact.is_file() and exact.stat().st_size > 0:
                 return exact
             exact_safe = cdir / safe_name
-            if exact_safe.is_file():
+            if exact_safe.is_file() and exact_safe.stat().st_size > 0:
                 return exact_safe
             for pattern in (f"*{clean_name}", f"*{safe_name}*"):
                 for m in cdir.glob(pattern):
-                    if m.is_file() and m.suffix.lower() == ".pdf":
+                    if m.is_file() and m.suffix.lower() == ".pdf" and m.stat().st_size > 0:
                         return m
 
-    # 4. Content-addressable SHA-256 hash match (infallible fallback)
+    # 5. Deep content-addressable SHA-256 hash scan across candidate dirs
     if file_hash:
         target_hash = file_hash.lower()
         for cdir in candidate_dirs:
             for pdf_path in cdir.rglob("*.pdf"):
                 try:
-                    h = hashlib.sha256(pdf_path.read_bytes()).hexdigest()
-                    if h.lower() == target_hash:
-                        logger.info("Recovered document path via SHA-256 match: %s -> %s", target_hash[:12], pdf_path)
-                        return pdf_path
+                    if pdf_path.stat().st_size > 0:
+                        h = hashlib.sha256(pdf_path.read_bytes()).hexdigest()
+                        if h.lower() == target_hash:
+                            logger.info("Recovered document path via SHA-256 match: %s -> %s", target_hash[:12], pdf_path)
+                            return pdf_path
                 except (OSError, PermissionError):
                     continue
 
@@ -210,39 +231,65 @@ def find_original_pdf_path(
 
 
 def _synthesize_student_pdf(report_data: dict[str, Any]) -> pymupdf.Document:
-    """Generate a clean synthetic document from extracted text when original file is unavailable."""
+    """Generate a cleanly paginated document from extracted text when original file is unavailable."""
     doc = pymupdf.open()
     page_texts: Sequence[dict[str, Any]] = report_data.get("page_texts") or []
 
+    def _render_page_text(page: pymupdf.Page, text: str, page_num: int, total_pages: int):
+        # Header rule and label
+        header_rect = pymupdf.Rect(54, 30, 541, 45)
+        page.insert_textbox(
+            header_rect,
+            f"Alethian Forensic Viewer — Document Body (Page {page_num} of {total_pages})",
+            fontsize=8,
+            fontname="helv",
+            color=(0.5, 0.5, 0.5),
+        )
+        page.draw_line(pymupdf.Point(54, 48), pymupdf.Point(541, 48), color=(0.8, 0.8, 0.8), width=0.5)
+
+        # Body text area
+        body_rect = pymupdf.Rect(54, 60, 541, 780)
+        # Clean formatting: split into paragraphs and insert with line spacing
+        page.insert_textbox(body_rect, text.strip(), fontsize=10, fontname="times", color=(0.1, 0.1, 0.1))
+
+        # Footer page number
+        footer_rect = pymupdf.Rect(54, 800, 541, 815)
+        page.insert_textbox(
+            footer_rect,
+            str(page_num),
+            fontsize=9,
+            fontname="helv",
+            color=(0.6, 0.6, 0.6),
+            align=pymupdf.TEXT_ALIGN_CENTER,
+        )
+
     if page_texts:
-        for pt in page_texts:
-            page = doc.new_page(width=595, height=842)  # A4 size in points
-            text = pt.get("text") or ""
-            # Margin rect for readable text flow
-            rect = pymupdf.Rect(54, 54, 541, 788)
-            page.insert_textbox(rect, text, fontsize=10, fontname="helv")
+        total = len(page_texts)
+        for idx, pt in enumerate(page_texts, start=1):
+            page = doc.new_page(width=595, height=842)
+            _render_page_text(page, pt.get("text") or "", idx, total)
     else:
         doc_text = report_data.get("document_text") or "No document text available."
         words = doc_text.split()
-        words_per_page = 380
+        words_per_page = 350
         page_chunks = [
             " ".join(words[i : i + words_per_page])
             for i in range(0, max(len(words), 1), words_per_page)
         ]
-        for chunk in page_chunks:
+        total = len(page_chunks)
+        for idx, chunk in enumerate(page_chunks, start=1):
             page = doc.new_page(width=595, height=842)
-            rect = pymupdf.Rect(54, 54, 541, 788)
-            page.insert_textbox(rect, chunk, fontsize=10, fontname="helv")
+            _render_page_text(page, chunk, idx, total)
 
     if len(doc) > 0:
         first_page = doc[0]
-        banner_rect = pymupdf.Rect(54, 20, 541, 45)
-        first_page.draw_rect(banner_rect, color=(0.9, 0.4, 0.1), fill=(1.0, 0.95, 0.90))
+        banner_rect = pymupdf.Rect(54, 15, 541, 30)
+        first_page.draw_rect(banner_rect, color=(0.85, 0.45, 0.15), fill=(1.0, 0.96, 0.92))
         first_page.insert_textbox(
             banner_rect,
             "ARCHIVAL NOTICE: Original submitted PDF was unavailable on storage. Text shown below is extracted fallback.",
-            fontsize=8,
-            color=(0.8, 0.2, 0.0),
+            fontsize=7.5,
+            color=(0.75, 0.25, 0.05),
             fontname="helv",
             align=pymupdf.TEXT_ALIGN_CENTER,
         )

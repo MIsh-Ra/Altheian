@@ -171,8 +171,55 @@ def extract_with_ocr(file_path: str) -> Optional[Dict[str, Any]]:
         return None
 
 
+def extract_with_pymupdf(file_path: str) -> Optional[Dict[str, Any]]:
+    """Tier 1.5: PyMuPDF high-fidelity text extraction. Preserves authentic per-page text, paragraphs, and boundaries."""
+    try:
+        import pymupdf
+        from pathlib import Path
+        doc = pymupdf.open(file_path)
+        pages = []
+        for page in doc:
+            text = page.get_text("text")
+            pages.append(text.strip() if text else "")
+
+        from app.core.config import settings
+        non_empty = [p for p in pages if p]
+        if not non_empty:
+            return None
+
+        combined = "\n\n".join(non_empty)
+        if len(combined.strip()) < settings.MIN_TEXT_LENGTH:
+            return None
+
+        page_texts, body_text, page_boundaries = _build_page_texts(pages)
+        title = doc.metadata.get("title") or "Unknown Title"
+        if not title or title.strip() in ("Unknown Title", ""):
+            title = Path(file_path).name
+
+        return {
+            "body_text": body_text,
+            "title": title,
+            "page_count": len(pages),
+            "page_texts": page_texts,
+            "page_boundaries": page_boundaries,
+            "sections": [],
+            "references": [],
+            "extraction_method": "pymupdf",
+            "confidence": 0.9,
+        }
+    except Exception as e:
+        logger.warning("PyMuPDF extraction failed: %s", e)
+        return None
+
+
 def get_page_count(file_path: str) -> int:
-    """Get actual page count from pypdf (not section count)."""
+    """Get actual page count from PyMuPDF or pypdf (not section count)."""
+    try:
+        import pymupdf
+        doc = pymupdf.open(file_path)
+        return max(1, len(doc))
+    except Exception:
+        pass
     try:
         import pypdf
         with open(file_path, "rb") as f:
@@ -187,76 +234,55 @@ def extract_text_from_pdf(
     grobid_url: str = "http://localhost:8070"
 ) -> Dict[str, Any]:
     """
-    Master extraction function. Tries Grobid -> pypdf -> OCR.
+    Master extraction function. Tries PyMuPDF (authentic per-page structure) + Grobid (metadata/sections) -> pypdf -> OCR.
 
-    KEY INVARIANT: page_boundaries and page_texts are ALWAYS sourced from pypdf
-    (which has real PDF page structure), even when Grobid provides better text quality.
-    Grobid rarely emits <pb> markers, causing all matches to be assigned page 1.
+    KEY INVARIANT: page_boundaries and page_texts are ALWAYS sourced from authentic PDF page structures (PyMuPDF / pypdf),
+    preserving real paragraphs, headings, and formatting rather than arbitrary character slicing.
     """
     page_count = get_page_count(file_path)
 
-    # ALWAYS get pypdf page boundaries first — they are always accurate
-    pypdf_result = extract_with_pypdf(file_path)
+    # 1. ALWAYS get authentic per-page text & boundaries from PyMuPDF first
+    native_result = extract_with_pymupdf(file_path) or extract_with_pypdf(file_path)
 
-    # Read file bytes for Grobid
+    # 2. Read file bytes for Grobid
     with open(file_path, "rb") as f:
         file_bytes = f.read()
 
-    # --- Tier 1: Grobid (for text quality + metadata) ---
+    # 3. Grobid parse for academic metadata & sections
     grobid_parsed = extract_with_grobid(file_bytes, grobid_url)
 
     if grobid_parsed and grobid_parsed.get("body_text", "").strip():
-        grobid_text = grobid_parsed["body_text"]
-
-        # If Grobid has real multi-page data (rare), use it; otherwise use pypdf structure
         grobid_pages = grobid_parsed.get("page_texts", [])
         grobid_has_real_pages = len(grobid_pages) > 1
 
         if grobid_has_real_pages:
-            # Grobid gave us real page structure — use it as-is
             logger.info("Grobid extraction: multi-page structure detected (%d pages).", len(grobid_pages))
             grobid_parsed["page_count"] = max(page_count, len(grobid_pages))
             grobid_parsed["extraction_method"] = "grobid"
             return grobid_parsed
         else:
-            # Grobid has text but single-page structure — use pypdf page boundaries
-            # mapped proportionally onto Grobid's text
-            if pypdf_result and page_count > 1:
+            # Grobid has single-page or unpaginated text:
+            # Prefer authentic per-page text from PyMuPDF if available so each page has authentic text & formatting!
+            if native_result and native_result.get("page_count", 0) > 1:
                 logger.info(
-                    "Grobid extraction: single-page fallback. Applying pypdf page boundaries (%d pages).",
-                    page_count
+                    "Grobid unpaginated. Merging Grobid metadata with authentic PyMuPDF per-page text (%d pages).",
+                    native_result["page_count"]
                 )
-                # Proportionally divide Grobid's text into pypdf's page boundaries
-                text_len = len(grobid_text)
-                chars_per_page = text_len / page_count
-                pages_text = []
-                for pg in range(page_count):
-                    start = int(pg * chars_per_page)
-                    end = int((pg + 1) * chars_per_page) if pg < page_count - 1 else text_len
-                    pages_text.append(grobid_text[start:end])
-
-                page_texts, body_text, page_boundaries = _build_page_texts(pages_text)
-                return {
-                    "body_text": body_text,
-                    "title": grobid_parsed.get("title", "Unknown Title"),
-                    "page_count": page_count,
-                    "page_texts": page_texts,
-                    "page_boundaries": page_boundaries,
-                    "sections": grobid_parsed.get("sections", []),
-                    "references": grobid_parsed.get("references", []),
-                    "extraction_method": "grobid+pypdf_boundaries",
-                    "confidence": grobid_parsed.get("confidence", 0.8),
-                }
+                native_result["sections"] = grobid_parsed.get("sections", [])
+                native_result["references"] = grobid_parsed.get("references", [])
+                if grobid_parsed.get("title") and grobid_parsed["title"] != "Unknown Title":
+                    native_result["title"] = grobid_parsed["title"]
+                native_result["extraction_method"] = "pymupdf+grobid_meta"
+                return native_result
             else:
-                # No pypdf fallback available — use Grobid's single-page result
                 grobid_parsed["page_count"] = page_count
                 grobid_parsed["extraction_method"] = "grobid"
                 return grobid_parsed
 
-    # --- Tier 2: pypdf (already computed above) ---
-    if pypdf_result:
-        logger.info("Grobid unavailable, using pypdf.")
-        return pypdf_result
+    # --- Tier 2: Native PyMuPDF / pypdf ---
+    if native_result:
+        logger.info("Using authentic native PDF extraction (%s).", native_result.get("extraction_method"))
+        return native_result
 
     # --- Tier 3: Tesseract OCR ---
     result = extract_with_ocr(file_path)
