@@ -44,8 +44,8 @@ describe('ExportMenu Component', () => {
 
     it('renders dual-action download options, JSON, and print buttons', () => {
         render(<ExportMenu />);
-        expect(screen.getByText('Download Full Forensic Audit (Summary + Highlighted Thesis PDF)')).toBeInTheDocument();
-        expect(screen.getByText('Download Executive Summary Only (3-Page Certificate PDF)')).toBeInTheDocument();
+        expect(screen.getByText('Full Audit (PDF)')).toBeInTheDocument();
+        expect(screen.getByText('Summary Only')).toBeInTheDocument();
         expect(screen.getByText('JSON')).toBeInTheDocument();
         expect(screen.getByText('PRINT')).toBeInTheDocument();
     });
@@ -55,7 +55,7 @@ describe('ExportMenu Component', () => {
         Client.reports.exportPdf.mockResolvedValueOnce(mockBlob);
 
         render(<ExportMenu />);
-        fireEvent.click(screen.getByText('Download Full Forensic Audit (Summary + Highlighted Thesis PDF)'));
+        fireEvent.click(screen.getByText('Full Audit (PDF)'));
 
         await waitFor(() => {
             expect(Client.reports.exportPdf).toHaveBeenCalledWith(undefined, 'bundle');
@@ -68,7 +68,7 @@ describe('ExportMenu Component', () => {
         Client.reports.exportPdf.mockResolvedValueOnce(mockBlob);
 
         render(<ExportMenu />);
-        fireEvent.click(screen.getByText('Download Executive Summary Only (3-Page Certificate PDF)'));
+        fireEvent.click(screen.getByText('Summary Only'));
 
         await waitFor(() => {
             expect(Client.reports.exportPdf).toHaveBeenCalledWith(undefined, 'summary');
@@ -82,7 +82,7 @@ describe('ExportMenu Component', () => {
         const consoleMock = vi.spyOn(console, 'error').mockImplementation(() => {});
 
         render(<ExportMenu />);
-        fireEvent.click(screen.getByText('Download Full Forensic Audit (Summary + Highlighted Thesis PDF)'));
+        fireEvent.click(screen.getByText('Full Audit (PDF)'));
 
         await waitFor(() => {
             expect(alertMock).toHaveBeenCalledWith('PDF export failed. Please try again.');

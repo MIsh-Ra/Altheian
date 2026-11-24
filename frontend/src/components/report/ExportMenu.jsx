@@ -58,24 +58,25 @@ export default function ExportMenu() {
     };
 
     const btnBase = `inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded text-xs font-medium
-        border border-ghost bg-surface text-on-surface
+        border border-ghost bg-surface text-on-surface whitespace-nowrap
         hover:bg-surface-container hover:text-on-surface transition-colors disabled:opacity-50 select-none`;
 
     return (
-        <div className="flex items-center space-x-2" id="export-menu">
+        <div className="flex items-center flex-wrap gap-2" id="export-menu">
             {/* Primary Option: Full Forensic Audit (Bundle) */}
             <button
                 id="export-bundle-pdf-btn"
                 onClick={() => handlePdfExport('bundle')}
                 disabled={!!exporting}
                 title="Download Full Forensic Audit (Summary + Highlighted Thesis PDF)"
-                className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded text-xs font-medium border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50 select-none shadow-xs"
+                aria-label="Download Full Forensic Audit (Summary + Highlighted Thesis PDF)"
+                className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded text-xs font-medium border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50 select-none shadow-xs whitespace-nowrap"
             >
                 {exporting === 'bundle'
                     ? <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" strokeWidth={1.5} />
                     : <Download className="w-3.5 h-3.5 text-primary" strokeWidth={1.5} />}
-                <span className="truncate max-w-[280px] sm:max-w-none">
-                    {exporting === 'bundle' ? 'GENERATING AUDIT...' : 'Download Full Forensic Audit (Summary + Highlighted Thesis PDF)'}
+                <span>
+                    {exporting === 'bundle' ? 'GENERATING AUDIT...' : 'Full Audit (PDF)'}
                 </span>
             </button>
 
@@ -85,13 +86,14 @@ export default function ExportMenu() {
                 onClick={() => handlePdfExport('summary')}
                 disabled={!!exporting}
                 title="Download Executive Summary Only (3-Page Certificate PDF)"
+                aria-label="Download Executive Summary Only (3-Page Certificate PDF)"
                 className={btnBase}
             >
                 {exporting === 'summary'
                     ? <Loader2 className="w-3.5 h-3.5 animate-spin text-secondary" strokeWidth={1.5} />
                     : <FileCheck className="w-3.5 h-3.5 text-on-surface-variant" strokeWidth={1.5} />}
-                <span className="truncate max-w-[260px] sm:max-w-none">
-                    {exporting === 'summary' ? 'GENERATING SUMMARY...' : 'Download Executive Summary Only (3-Page Certificate PDF)'}
+                <span>
+                    {exporting === 'summary' ? 'GENERATING SUMMARY...' : 'Summary Only'}
                 </span>
             </button>
 
@@ -101,6 +103,7 @@ export default function ExportMenu() {
                 onClick={handleJsonExport}
                 disabled={!!exporting}
                 title="Export report data as JSON"
+                aria-label="Export report data as JSON"
                 className={btnBase}
             >
                 {exporting === 'json'
@@ -115,6 +118,7 @@ export default function ExportMenu() {
                 onClick={handlePrint}
                 disabled={!!exporting}
                 title="Print full multi-page report"
+                aria-label="Print full multi-page report"
                 className={btnBase}
             >
                 <Printer className="w-3.5 h-3.5 text-on-surface-variant" strokeWidth={1.5} />

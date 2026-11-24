@@ -165,7 +165,7 @@ export default function ReportView() {
     return (
         <div className="flex flex-col h-full bg-surface overflow-hidden print:h-auto print:overflow-visible print:block" id="alethian-report-container">
             {/* Header Toolbar */}
-            <header className="flex-none bg-surface-container-low border-b border-ghost px-5 py-3 flex items-center justify-between z-10 print:hidden select-none min-w-0">
+            <header className="flex-none bg-surface-container-low border-b border-ghost px-4 py-2.5 sm:px-5 sm:py-3 flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 z-10 print:hidden select-none min-w-0">
                 <div className="flex items-center space-x-3 flex-shrink-0">
                     <button 
                         aria-label="Return to Dashboard" 
@@ -181,7 +181,7 @@ export default function ReportView() {
                 </div>
 
                 {/* 4 Clean Dedicated Navigation Tabs */}
-                <div className="flex items-center rounded bg-surface-container p-0.5 border border-ghost flex-shrink-0 whitespace-nowrap">
+                <div className="flex items-center rounded bg-surface-container p-0.5 border border-ghost flex-shrink-0 whitespace-nowrap overflow-x-auto max-w-full">
                     <button
                         onClick={() => setActiveTab && setActiveTab('plagiarism')}
                         className={`flex items-center space-x-1.5 px-3 py-1 text-xs rounded font-medium transition-colors ${
@@ -229,13 +229,13 @@ export default function ReportView() {
                 </div>
 
                 {/* Actions: Export + Review */}
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center flex-wrap gap-2">
                     <ExportMenu />
                     <button
                         onClick={handleMarkReviewed}
                         disabled={reviewed || reviewing}
                         aria-label="Mark Report as Reviewed"
-                        className={`inline-flex items-center space-x-1.5 px-3 py-1.5 border rounded text-xs font-medium transition-colors ${
+                        className={`inline-flex items-center space-x-1.5 px-3 py-1.5 border rounded text-xs font-medium transition-colors whitespace-nowrap ${
                             reviewed
                                 ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 cursor-default'
                                 : 'bg-surface border-ghost text-on-surface hover:bg-surface-container'
