@@ -21,7 +21,7 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import ScoreHeader from '../components/report/ScoreHeader';
 import Heatmap from '../components/report/Heatmap';
 import DiffViewer from '../components/report/DiffViewer';
-import TextOverlay from '../components/report/TextOverlay';
+import PDFViewer from '../components/report/PDFViewer';
 import SourcePanel from '../components/report/SourcePanel';
 import FilterBar from '../components/report/FilterBar';
 import MatchCard from '../components/report/MatchCard';
@@ -44,6 +44,8 @@ export default function ReportView() {
         selectedMatchId, 
         filterTypes, 
         setSelectedMatch,
+        currentPage,
+        setCurrentPage,
         activeTab = 'plagiarism',
         setActiveTab,
         setAIDetectionResult,
@@ -73,12 +75,15 @@ export default function ReportView() {
         setDiffDismissed(false);
         const match = (report?.matches || []).find(m => m.id === selectedMatchId);
         if (match?.submitted_page) {
+            if (setCurrentPage) {
+                setCurrentPage(match.submitted_page);
+            }
             setTimeout(() => {
                 const el = document.getElementById(`page-${match.submitted_page}`);
                 if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 60);
         }
-    }, [selectedMatchId, report?.matches]);
+    }, [selectedMatchId, report?.matches, setCurrentPage]);
 
     useEffect(() => {
         if (!id) return;
@@ -254,12 +259,11 @@ export default function ReportView() {
                     {/* Main Document Inspector Area with Turnitin in-situ cyan AI highlights */}
                     <main className="flex-1 min-w-0 bg-surface border border-ghost rounded flex flex-col overflow-hidden relative print:border-none print:rounded-none print:block print:overflow-visible print:h-auto">
                         <div className="flex-1 overflow-hidden relative print:overflow-visible print:h-auto print:block">
-                            <TextOverlay
-                                pageTexts={report.page_texts || []}
-                                documentText={report.document_text || ""}
-                                matches={filteredMatches}
-                                aiWindows={report.ai_detection?.windows || aiDetectionResult?.windows || []}
+                            <PDFViewer
+                                documentId={id}
                                 activeTab="ai_detection"
+                                report={report}
+                                totalPages={report.heatmap?.length || report.summary_stats?.total_pages || report.page_count}
                             />
                         </div>
                     </main>
@@ -531,10 +535,11 @@ export default function ReportView() {
                             <span>Plagiarism text overlays</span>
                         </div>
                         <div className="flex-1 overflow-hidden relative">
-                            <TextOverlay
-                                pageTexts={report.page_texts || []}
-                                documentText={report.document_text || ""}
-                                matches={filteredMatches}
+                            <PDFViewer
+                                documentId={id}
+                                activeTab="plagiarism"
+                                report={report}
+                                totalPages={report.heatmap?.length || report.summary_stats?.total_pages || report.page_count}
                             />
                         </div>
                     </div>
@@ -549,12 +554,11 @@ export default function ReportView() {
                     {/* Main Document Inspector Area (Fluid, Spacious) */}
                     <main className="flex-1 min-w-0 bg-surface border border-ghost rounded flex flex-col overflow-hidden relative print:border-none print:rounded-none print:block print:overflow-visible print:h-auto">
                         <div className="flex-1 overflow-hidden relative print:overflow-visible print:h-auto print:block">
-                            <TextOverlay
-                                pageTexts={report.page_texts || []}
-                                documentText={report.document_text || ""}
-                                matches={filteredMatches}
-                                aiWindows={report.ai_detection?.windows || aiDetectionResult?.windows || []}
+                            <PDFViewer
+                                documentId={id}
                                 activeTab="plagiarism"
+                                report={report}
+                                totalPages={report.heatmap?.length || report.summary_stats?.total_pages || report.page_count}
                             />
                         </div>
                     </main>

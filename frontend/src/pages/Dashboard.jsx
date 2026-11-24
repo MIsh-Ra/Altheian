@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Client from '../api/client';
-import { FileText, Upload, Plus, CheckCircle, Clock, AlertTriangle, ArrowRight, Loader2, RefreshCcw } from 'lucide-react';
+import { FileText, Upload, Plus, CheckCircle, Clock, AlertTriangle, ArrowRight, Loader2, RefreshCcw, Sparkles, Globe, Database, Sliders, Check } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import AgentOrb from '../components/common/AgentOrb';
 
@@ -14,6 +14,11 @@ export default function Dashboard() {
     const navigate = useNavigate();
 
     const [courseFilter, setCourseFilter] = useState('');
+    const [scope, setScope] = useState({
+        check_ai: true,
+        check_web: true,
+        check_internal: true
+    });
 
     useEffect(() => {
         loadDocuments();
@@ -34,9 +39,15 @@ export default function Dashboard() {
         const files = Array.from(e.target.files);
         if (!files.length) return;
 
+        // Ensure at least one check is active
+        if (!scope.check_ai && !scope.check_web && !scope.check_internal) {
+            alert("Please select at least one audit module (AI Detection, Web Dragnet, or Theses Archive).");
+            return;
+        }
+
         setUploading(true);
         try {
-            const uploadPromises = files.map(file => Client.documents.upload(file));
+            const uploadPromises = files.map(file => Client.documents.upload(file, null, scope));
             const newDocs = await Promise.all(uploadPromises);
             
             // Set the most recent doc for WebSocket tracking just in case
@@ -114,6 +125,121 @@ export default function Dashboard() {
                     />
                 </div>
             </header>
+
+            {/* Audit Scope Configuration */}
+            <div className="space-y-3">
+                <div className="bg-surface-container rounded-lg p-4 border border-outline-variant/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center space-x-2 text-on-surface">
+                        <Sliders className="w-4 h-4 text-primary" />
+                        <div>
+                            <span className="text-xs font-bold uppercase tracking-wider text-on-surface">Selective Audit Scope</span>
+                            <span className="text-xs text-on-surface-variant ml-2 font-normal">Choose which forensic checks to run</span>
+                        </div>
+                    </div>
+                    {/* Quick Presets */}
+                    <div className="flex items-center space-x-2">
+                        <span className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider mr-1">Presets:</span>
+                        <button
+                            type="button"
+                            onClick={() => setScope({ check_ai: true, check_web: true, check_internal: true })}
+                            className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-all ${
+                                scope.check_ai && scope.check_web && scope.check_internal
+                                    ? 'bg-primary text-on-primary border-primary shadow-xs'
+                                    : 'bg-surface-container-highest text-on-surface-variant border-outline-variant/50 hover:bg-surface-container-high'
+                            }`}
+                        >
+                            Full Audit
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setScope({ check_ai: true, check_web: false, check_internal: false })}
+                            className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-all ${
+                                scope.check_ai && !scope.check_web && !scope.check_internal
+                                    ? 'bg-cyan-600 text-white border-cyan-500 shadow-xs'
+                                    : 'bg-surface-container-highest text-on-surface-variant border-outline-variant/50 hover:bg-surface-container-high'
+                            }`}
+                        >
+                            ⚡ AI Only (~5s)
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setScope({ check_ai: false, check_web: true, check_internal: true })}
+                            className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-all ${
+                                !scope.check_ai && scope.check_web && scope.check_internal
+                                    ? 'bg-secondary text-on-secondary border-secondary shadow-xs'
+                                    : 'bg-surface-container-highest text-on-surface-variant border-outline-variant/50 hover:bg-surface-container-high'
+                            }`}
+                        >
+                            Plagiarism Only
+                        </button>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* AI Toggle */}
+                    <label className={`flex items-start p-3.5 rounded-lg border transition-all cursor-pointer ${
+                        scope.check_ai 
+                            ? 'bg-cyan-950/20 border-cyan-500/50 text-cyan-200 shadow-xs' 
+                            : 'bg-surface-container-lowest border-outline-variant/20 opacity-60 hover:opacity-80'
+                    }`}>
+                        <input
+                            type="checkbox"
+                            checked={scope.check_ai}
+                            onChange={(e) => setScope(prev => ({ ...prev, check_ai: e.target.checked }))}
+                            className="mt-0.5 h-4 w-4 rounded text-cyan-500 border-gray-600 focus:ring-0 cursor-pointer"
+                        />
+                        <div className="ml-3 select-none">
+                            <div className="flex items-center space-x-1.5 font-bold text-xs text-on-surface">
+                                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                                <span>AI Detection (Qwen2.5)</span>
+                            </div>
+                            <p className="text-[11px] text-on-surface-variant mt-0.5">Perplexity & Binoculars burstiness (~5s)</p>
+                        </div>
+                    </label>
+
+                    {/* Web Dragnet Toggle */}
+                    <label className={`flex items-start p-3.5 rounded-lg border transition-all cursor-pointer ${
+                        scope.check_web 
+                            ? 'bg-blue-950/20 border-blue-500/50 text-blue-200 shadow-xs' 
+                            : 'bg-surface-container-lowest border-outline-variant/20 opacity-60 hover:opacity-80'
+                    }`}>
+                        <input
+                            type="checkbox"
+                            checked={scope.check_web}
+                            onChange={(e) => setScope(prev => ({ ...prev, check_web: e.target.checked }))}
+                            className="mt-0.5 h-4 w-4 rounded text-blue-500 border-gray-600 focus:ring-0 cursor-pointer"
+                        />
+                        <div className="ml-3 select-none">
+                            <div className="flex items-center space-x-1.5 font-bold text-xs text-on-surface">
+                                <Globe className="w-3.5 h-3.5 text-blue-400" />
+                                <span>Live Web Dragnet</span>
+                            </div>
+                            <p className="text-[11px] text-on-surface-variant mt-0.5">Wayback Machine & Google search (~30s)</p>
+                        </div>
+                    </label>
+
+                    {/* Internal Archive Toggle */}
+                    <label className={`flex items-start p-3.5 rounded-lg border transition-all cursor-pointer ${
+                        scope.check_internal 
+                            ? 'bg-purple-950/20 border-purple-500/50 text-purple-200 shadow-xs' 
+                            : 'bg-surface-container-lowest border-outline-variant/20 opacity-60 hover:opacity-80'
+                    }`}>
+                        <input
+                            type="checkbox"
+                            checked={scope.check_internal}
+                            onChange={(e) => setScope(prev => ({ ...prev, check_internal: e.target.checked }))}
+                            className="mt-0.5 h-4 w-4 rounded text-purple-500 border-gray-600 focus:ring-0 cursor-pointer"
+                        />
+                        <div className="ml-3 select-none">
+                            <div className="flex items-center space-x-1.5 font-bold text-xs text-on-surface">
+                                <Database className="w-3.5 h-3.5 text-purple-400" />
+                                <span>Theses Archive</span>
+                            </div>
+                            <p className="text-[11px] text-on-surface-variant mt-0.5">Internal Qdrant vector similarity (~3s)</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
 
             {/* Upload Section */}
             <section className="bg-surface-container-lowest rounded-md p-10 text-center border-2 border-dashed border-outline-variant/30 hover:bg-surface-container-low transition-colors cursor-pointer group relative shadow-sm">

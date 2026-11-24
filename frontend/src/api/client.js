@@ -45,10 +45,15 @@ const Client = {
             const response = await api.get(`/documents/${id}`);
             return response.data;
         },
-        upload: async (file, courseId = null) => {
+        upload: async (file, courseId = null, scope = null) => {
             const formData = new FormData();
             formData.append('file', file);
             if (courseId) formData.append('course_id', courseId);
+            if (scope) {
+                formData.append('check_ai', String(scope.check_ai ?? true));
+                formData.append('check_web', String(scope.check_web ?? true));
+                formData.append('check_internal', String(scope.check_internal ?? true));
+            }
             const response = await api.post('/documents/upload', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
