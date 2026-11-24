@@ -41,14 +41,16 @@ export default function InfoTooltip({
     const resolvedCategory = category || (termKey ? getTermCategory(termKey) : '');
     const resolvedGuidance = guidance || (termKey ? getTermGuidance(termKey) : '');
 
-    // Handle Escape key to dismiss tooltip
+    // Handle Escape key and outside click to dismiss tooltip
     useEffect(() => {
         if (!isOpen) return;
 
-        const handleKeyDown = (e) => {
+        const handleGlobalKeyDown = (e) => {
             if (e.key === 'Escape') {
                 setIsOpen(false);
-                triggerRef.current?.focus();
+                if (document.activeElement !== triggerRef.current) {
+                    triggerRef.current?.focus();
+                }
             }
         };
 
@@ -63,10 +65,10 @@ export default function InfoTooltip({
             }
         };
 
-        document.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keydown', handleGlobalKeyDown);
         document.addEventListener('mousedown', handleClickOutside);
         return () => {
-            document.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keydown', handleGlobalKeyDown);
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, [isOpen]);
@@ -95,6 +97,10 @@ export default function InfoTooltip({
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             setIsOpen((prev) => !prev);
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsOpen(false);
         }
     };
 

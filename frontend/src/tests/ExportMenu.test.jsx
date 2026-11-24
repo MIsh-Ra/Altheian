@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ExportMenu from '../components/report/ExportMenu';
 import Client from '../api/client';
@@ -42,22 +42,36 @@ describe('ExportMenu Component', () => {
         global.URL.revokeObjectURL = vi.fn();
     });
 
-    it('renders export buttons', () => {
+    it('renders dual-action download options, JSON, and print buttons', () => {
         render(<ExportMenu />);
-        expect(screen.getByText('EXPORT PDF')).toBeInTheDocument();
+        expect(screen.getByText('Download Full Forensic Audit (Summary + Highlighted Thesis PDF)')).toBeInTheDocument();
+        expect(screen.getByText('Download Executive Summary Only (3-Page Certificate PDF)')).toBeInTheDocument();
         expect(screen.getByText('JSON')).toBeInTheDocument();
         expect(screen.getByText('PRINT')).toBeInTheDocument();
     });
 
-    it('triggers pdf export on click', async () => {
+    it('triggers full forensic bundle pdf export on primary button click', async () => {
         const mockBlob = new Blob(['pdf-data'], { type: 'application/pdf' });
         Client.reports.exportPdf.mockResolvedValueOnce(mockBlob);
 
         render(<ExportMenu />);
-        fireEvent.click(screen.getByText('EXPORT PDF'));
+        fireEvent.click(screen.getByText('Download Full Forensic Audit (Summary + Highlighted Thesis PDF)'));
 
         await waitFor(() => {
-            expect(Client.reports.exportPdf).toHaveBeenCalled();
+            expect(Client.reports.exportPdf).toHaveBeenCalledWith(undefined, 'bundle');
+            expect(global.URL.createObjectURL).toHaveBeenCalledWith(mockBlob);
+        });
+    });
+
+    it('triggers executive summary pdf export on secondary button click', async () => {
+        const mockBlob = new Blob(['summary-pdf-data'], { type: 'application/pdf' });
+        Client.reports.exportPdf.mockResolvedValueOnce(mockBlob);
+
+        render(<ExportMenu />);
+        fireEvent.click(screen.getByText('Download Executive Summary Only (3-Page Certificate PDF)'));
+
+        await waitFor(() => {
+            expect(Client.reports.exportPdf).toHaveBeenCalledWith(undefined, 'summary');
             expect(global.URL.createObjectURL).toHaveBeenCalledWith(mockBlob);
         });
     });
@@ -68,7 +82,7 @@ describe('ExportMenu Component', () => {
         const consoleMock = vi.spyOn(console, 'error').mockImplementation(() => {});
 
         render(<ExportMenu />);
-        fireEvent.click(screen.getByText('EXPORT PDF'));
+        fireEvent.click(screen.getByText('Download Full Forensic Audit (Summary + Highlighted Thesis PDF)'));
 
         await waitFor(() => {
             expect(alertMock).toHaveBeenCalledWith('PDF export failed. Please try again.');

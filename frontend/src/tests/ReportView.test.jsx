@@ -22,6 +22,8 @@ vi.mock('../stores/reportStore', () => ({
   useReportStore: vi.fn(() => ({
     selectedMatchId: null,
     filterTypes: { internal_exact: true, internal_paraphrase: true, web: true, excluded: false },
+    activeTab: 'overview',
+    setActiveTab: vi.fn(),
   })),
 }));
 
@@ -61,7 +63,6 @@ describe('ReportView Component', () => {
     it('shows loading state initially', async () => {
         useParams.mockReturnValue({ id: '123' });
 
-        // Import the mocked module to control return value
         const { useReport } = await import('../hooks/useReport');
         useReport.mockReturnValue({ report: null, loading: true, setReport: vi.fn() });
 
@@ -69,7 +70,7 @@ describe('ReportView Component', () => {
         expect(screen.getByText(/ACQUIRING FORENSIC DATA/i)).toBeInTheDocument();
     });
 
-    it('renders report data when loaded', async () => {
+    it('renders report data and plain-English score cards with tooltips when loaded', async () => {
         useParams.mockReturnValue({ id: '123' });
 
         const { useReport } = await import('../hooks/useReport');
@@ -81,12 +82,43 @@ describe('ReportView Component', () => {
                 source_breakdown: [],
                 page_distribution: [],
                 summary_stats: {},
+                sources: [
+                    { id: 's1', type: 'web', domain: 'nature.com', coverage_percent: 12 }
+                ],
             },
             loading: false,
             setReport: vi.fn(),
         });
 
         render(<ReportView />);
-        expect(screen.getByTestId('text-overlay')).toBeInTheDocument();
+
+        // Originality score card and tooltip
+        expect(screen.getByText('Originality score')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Information about Originality Score/i })).toBeInTheDocument();
+
+        // AI Detection verdict card and tooltip
+        expect(screen.getByText('AI detection verdict')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Information about AI Probability/i })).toBeInTheDocument();
+
+        // Plain English source label
+        expect(screen.getByText('Internet & Online Sources')).toBeInTheDocument();
+    });
+
+    it('displays plain-English stage heading during processing', async () => {
+        useParams.mockReturnValue({ id: '123' });
+
+        const { useReport } = await import('../hooks/useReport');
+        useReport.mockReturnValue({
+            report: null,
+            documentData: { status: 'analyzing' },
+            loading: false,
+            setReport: vi.fn(),
+        });
+
+        const { useWebSocket } = await import('../hooks/useWebSocket');
+        useWebSocket.mockReturnValue({ stage: 'web_dragnet', progress: 45, message: 'Crawling indexed sources' });
+
+        render(<ReportView />);
+        expect(screen.getByText('Internet & Online Sources Scan')).toBeInTheDocument();
     });
 });
