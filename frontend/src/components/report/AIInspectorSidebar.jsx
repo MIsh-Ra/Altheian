@@ -85,20 +85,10 @@ export default function AIInspectorSidebar({ aiResult }) {
         }
         setSelectedWindow(idx);
 
-        // Synchronize page and scroll to in-situ cyan highlight
+        // Synchronize page so PDFViewer deterministically locates and centers the cyan highlight
         if (win.page_number) {
             setCurrentPage(win.page_number);
         }
-
-        setTimeout(() => {
-            const el = document.getElementById(`ai-win-${win.window_index ?? idx}`);
-            if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            } else if (win.page_number) {
-                const pageEl = document.getElementById(`page-${win.page_number}`);
-                if (pageEl) pageEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        }, 50);
     };
 
     return (
