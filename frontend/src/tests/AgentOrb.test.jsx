@@ -1,9 +1,18 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import AgentOrb, { STAGE_TO_ORB_STATE } from '../components/common/AgentOrb';
+import AgentOrb, { STAGE_TO_ORB_STATE, normalizeOrbSize } from '../components/common/AgentOrb';
 import { ThemeProvider } from '../components/ThemeContext';
 
 describe('AgentOrb Component', () => {
+  it('normalizes arbitrary sizes to thinking-orbs presets', () => {
+    expect(normalizeOrbSize(20)).toBe(20);
+    expect(normalizeOrbSize(16)).toBe(20);
+    expect(normalizeOrbSize(32)).toBe(32);
+    expect(normalizeOrbSize(48)).toBe(32);
+    expect(normalizeOrbSize(64)).toBe(64);
+    expect(normalizeOrbSize(128)).toBe(64);
+  });
+
   it('renders with testid and default properties', () => {
     render(
       <ThemeProvider>

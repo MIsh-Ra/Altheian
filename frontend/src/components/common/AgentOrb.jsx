@@ -26,6 +26,18 @@ export const STAGE_TO_ORB_STATE = {
   idle: 'breathing',
 };
 
+/**
+ * Normalize input size to one of thinking-orbs tuned presets: 20, 32, or 64.
+ */
+export function normalizeOrbSize(size) {
+  if (size === 20 || size === 32 || size === 64) return size;
+  const num = Number(size);
+  if (isNaN(num)) return 64;
+  if (num <= 26) return 20;
+  if (num <= 48) return 32;
+  return 64;
+}
+
 export default function AgentOrb({
   stage,
   state,
@@ -33,6 +45,7 @@ export default function AgentOrb({
   speed = 1,
   paused = false,
   className = '',
+  color,
   tint,
   ...props
 }) {
@@ -46,6 +59,8 @@ export default function AgentOrb({
 
   // Determine the active orb state
   const activeState = state || STAGE_TO_ORB_STATE[stage] || 'working';
+  const resolvedSize = normalizeOrbSize(size);
+  const resolvedColor = color || tint;
 
   return (
     <div
@@ -54,11 +69,11 @@ export default function AgentOrb({
     >
       <ThinkingOrb
         state={activeState}
-        size={size}
+        size={resolvedSize}
         theme={themeMode}
         speed={speed}
         paused={paused}
-        tint={tint}
+        color={resolvedColor}
         {...props}
       />
     </div>
