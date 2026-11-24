@@ -3,6 +3,8 @@ import { useReportStore } from '../../stores/reportStore';
 import { FileText, Globe, MessageSquare, EyeOff, RotateCcw, ExternalLink } from 'lucide-react';
 import Client from '../../api/client';
 import { useParams } from 'react-router-dom';
+import InfoTooltip from '../common/InfoTooltip';
+import { getTermLabel } from '../../utils/glossary';
 
 export default function MatchCard({ match, onUpdate }) {
     const { id } = useParams();
@@ -33,6 +35,10 @@ export default function MatchCard({ match, onUpdate }) {
     if (match.is_excluded) {
         const isCitationGrounded = match.exclude_reason?.includes('References') || match.is_citation_grounded;
         const isDraft = match.exclude_reason?.includes('Prior Submission');
+        const isTemplate = match.exclude_reason?.includes('Template') || match.exclude_reason?.includes('Boilerplate');
+
+        const tagKey = isCitationGrounded ? 'citation_grounding' : isDraft ? 'excluded_draft' : isTemplate ? 'institutional_template' : null;
+        const tagLabel = tagKey ? getTermLabel(tagKey) : 'Excluded match';
 
         return (
             <div className={`p-3 rounded-sm border text-xs transition-opacity ${
@@ -43,15 +49,18 @@ export default function MatchCard({ match, onUpdate }) {
                     : 'bg-surface-container-low border-ghost opacity-70 hover:opacity-100'
             }`}>
                 <div className="flex justify-between items-center mb-1.5">
-                    <span className={`inline-flex items-center space-x-1 font-mono text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${
-                        isCitationGrounded
-                            ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
-                            : isDraft
-                            ? 'bg-sky-500/20 text-sky-700 dark:text-sky-300'
-                            : 'bg-surface-container-high text-on-surface-variant line-through'
-                    }`}>
-                        {isCitationGrounded ? 'Attributed reference' : isDraft ? 'Author draft' : 'Excluded match'}
-                    </span>
+                    <div className="flex items-center space-x-1.5">
+                        <span className={`inline-flex items-center space-x-1 font-mono text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                            isCitationGrounded
+                                ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+                                : isDraft
+                                ? 'bg-sky-500/20 text-sky-700 dark:text-sky-300'
+                                : 'bg-surface-container-high text-on-surface-variant line-through'
+                        }`}>
+                            {tagLabel}
+                        </span>
+                        {tagKey && <InfoTooltip termKey={tagKey} size={12} align="start" />}
+                    </div>
                     <button
                         onClick={handleRestore}
                         className="inline-flex items-center space-x-1 text-secondary font-medium hover:underline text-xs"
@@ -62,7 +71,7 @@ export default function MatchCard({ match, onUpdate }) {
                 </div>
 
                 <p className="text-[11px] font-medium text-on-surface mb-1">
-                    {match.exclude_reason || `Excluded from penalty (Page ${match.submitted_page})`}
+                    {match.exclude_reason || `Exempted from penalty (Page ${match.submitted_page})`}
                 </p>
 
                 <p className="text-xs text-on-surface-variant font-serif line-clamp-2 pl-2 border-l border-ghost">
@@ -92,7 +101,8 @@ export default function MatchCard({ match, onUpdate }) {
             <div className="flex justify-between items-center mb-2">
                 <span className="inline-flex items-center text-xs font-medium text-on-surface space-x-1.5">
                     <Icon className="w-3.5 h-3.5 text-on-surface-variant" strokeWidth={1.5} />
-                    <span>{match.type ? match.type.replace(/_/g, ' ') : 'Match'}</span>
+                    <span>{getTermLabel(match.type) || (match.type ? match.type.replace(/_/g, ' ') : 'Match')}</span>
+                    <InfoTooltip termKey={match.type} size={12} align="start" />
                 </span>
                 <span className={`text-xs font-mono font-semibold tabular-nums ${
                     match.similarity >= 80 ? 'text-rose-600 dark:text-rose-400' : 'text-on-surface'
@@ -122,7 +132,7 @@ export default function MatchCard({ match, onUpdate }) {
             )}
 
             <div className="flex items-center justify-between text-[11px] text-on-surface-variant font-mono pt-2 border-t border-ghost">
-                <span>PAGE {match.submitted_page}</span>
+                <span className="bg-surface-container px-1.5 py-0.5 rounded text-[10px]">PAGE {match.submitted_page}</span>
                 <div className="space-x-3">
                     <button
                         onClick={(e) => { e.stopPropagation(); setIsEditingComment(true); }}
@@ -143,32 +153,31 @@ export default function MatchCard({ match, onUpdate }) {
                 <div className="mt-3 pt-2.5 border-t border-ghost space-y-2" onClick={(e) => e.stopPropagation()}>
                     <textarea 
                         value={commentText} 
-                        onChange={(e) => setCommentText(e.target.value)} 
-                        className="w-full text-xs font-sans p-2.5 bg-surface-container-low border border-ghost text-on-surface focus:border-outline focus:outline-none transition-colors rounded placeholder:text-on-surface-variant/50 min-h-[64px]" 
+                        onChange={(e) => setCommentText(e.target.value)}
                         placeholder="ENTER TRIAGE LOG..."
+                        className="w-full h-16 p-2 text-xs font-sans bg-surface-container-high border border-ghost rounded-xs focus:border-secondary focus:outline-hidden text-on-surface resize-none"
                     />
                     <div className="flex justify-end space-x-2">
-                        <button
-                            onClick={() => setIsEditingComment(false)}
-                            className="px-2.5 py-1 text-xs text-on-surface-variant hover:text-on-surface rounded"
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); setIsEditingComment(false); }}
+                            className="px-2.5 py-1 text-[11px] font-mono rounded border border-ghost text-on-surface-variant hover:text-on-surface"
                         >
                             CANCEL
                         </button>
-                        <button
+                        <button 
                             onClick={handleSaveComment}
-                            className="px-2.5 py-1 text-xs bg-primary text-on-primary font-medium rounded hover:opacity-90"
+                            className="px-2.5 py-1 text-[11px] font-mono rounded bg-primary text-surface font-semibold hover:bg-primary/90"
                         >
                             SAVE LOG
                         </button>
                     </div>
                 </div>
-            ) : match.comment && (
-                <div className="mt-3 pt-2 border-t border-ghost bg-surface-container-low p-2 rounded text-xs space-y-0.5">
-                    <span className="text-[10px] text-secondary font-medium uppercase tracking-wide block">Triage note</span>
-                    <p className="text-on-surface text-xs">{match.comment}</p>
+            ) : match.comment ? (
+                <div className="mt-2 pt-2 border-t border-ghost flex items-start space-x-1.5 text-xs text-on-surface-variant font-sans">
+                    <MessageSquare className="w-3.5 h-3.5 mt-0.5 flex-none opacity-60 text-secondary" />
+                    <span className="italic">{match.comment}</span>
                 </div>
-            )}
+            ) : null}
         </div>
     );
 }
-

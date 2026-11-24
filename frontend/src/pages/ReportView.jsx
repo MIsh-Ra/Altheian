@@ -30,6 +30,8 @@ import BarChart from '../components/report/BarChart';
 import ExportMenu from '../components/report/ExportMenu';
 import AIDetectionView, { getTierDetails } from '../components/report/AIDetectionView';
 import AgentOrb from '../components/common/AgentOrb';
+import InfoTooltip from '../components/common/InfoTooltip';
+import { getTermLabel } from '../utils/glossary';
 import { useReportStore } from '../stores/reportStore';
 
 export default function ReportView() {
@@ -107,8 +109,8 @@ export default function ReportView() {
     if (documentData && ['pending', 'ingesting', 'analyzing', 'processing'].includes(documentData.status)) {
         const activeStage = wsStatus?.stage || documentData.status;
         const stageHeading = 
-            activeStage === 'web_dragnet' ? 'Web Dragnet In Progress' :
-            activeStage === 'similarity' ? 'Scanning Vector Archives' :
+            activeStage === 'web_dragnet' ? 'Internet & Online Sources Scan' :
+            activeStage === 'similarity' ? 'Scanning Institutional Vector Archives' :
             activeStage === 'indexing' ? 'Indexing Document Into Corpus' :
             activeStage === 'report_generation' ? 'Synthesizing Forensic Report' :
             'Ingesting Evidence';
@@ -263,7 +265,14 @@ export default function ReportView() {
                             {/* Originality Card */}
                             <div className="p-5 rounded border border-ghost bg-surface-container-lowest space-y-3">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xs text-on-surface-variant font-medium">Originality score</span>
+                                    <div className="flex items-center space-x-1">
+                                        <span className="text-xs text-on-surface-variant font-medium">Originality score</span>
+                                        <InfoTooltip 
+                                            termKey="originality_score" 
+                                            content="Percentage of unique text in the document that does not match external sources or institutional archives." 
+                                            align="start" 
+                                        />
+                                    </div>
                                     <span className={`text-[10px] font-medium px-2 py-0.5 rounded border ${
                                         origScore >= 80 ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' :
                                         origScore >= 60 ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30' :
@@ -300,7 +309,14 @@ export default function ReportView() {
                                 return (
                                     <div className="p-5 rounded border border-ghost bg-surface-container-lowest space-y-3">
                                         <div className="flex items-center justify-between">
-                                            <span className="text-xs text-on-surface-variant font-medium">AI detection verdict</span>
+                                            <div className="flex items-center space-x-1">
+                                                <span className="text-xs text-on-surface-variant font-medium">AI detection verdict</span>
+                                                <InfoTooltip 
+                                                    termKey="ai_probability" 
+                                                    content="Estimated portion showing patterns typical of generative AI language models." 
+                                                    align="start" 
+                                                />
+                                            </div>
                                             <span className={`text-[10px] font-medium px-2 py-0.5 rounded border ${tierInfo.badge}`}>
                                                 {tierInfo.shortTitle}
                                             </span>
@@ -392,7 +408,7 @@ export default function ReportView() {
                                             </span>
                                         </div>
                                         <span className="text-[10px] font-mono text-on-surface-variant block">
-                                            {src.type === 'web' ? 'Online web publication' : 'Institutional archive'}
+                                            {src.type === 'web' ? getTermLabel('web_dragnet') : getTermLabel('internal_exact')}
                                         </span>
                                     </div>
                                 ))}
@@ -453,7 +469,7 @@ export default function ReportView() {
                                                             ? 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/30' 
                                                             : 'bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/30'
                                                     }`}>
-                                                        {isWeb ? 'Online Web' : 'Institutional'}
+                                                        {isWeb ? getTermLabel('web_dragnet') : getTermLabel('internal_exact')}
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4 text-right tabular-nums font-semibold text-on-surface">
@@ -542,7 +558,11 @@ export default function ReportView() {
                                 <div className="p-3 border-b border-ghost bg-surface flex items-center justify-between">
                                     <div>
                                         <span className="text-[10px] font-mono uppercase text-secondary font-semibold block">
-                                            {selectedMatch.type === 'web' ? 'Online web source' : selectedMatch.type === 'internal_exact' ? 'University thesis' : 'Paraphrased text'}
+                                            {selectedMatch.type === 'web' 
+                                                ? getTermLabel('web_dragnet') 
+                                                : selectedMatch.type === 'internal_exact' 
+                                                ? getTermLabel('internal_exact') 
+                                                : getTermLabel('internal_paraphrase')}
                                         </span>
                                         <span className="text-xs font-medium text-on-surface">
                                             {Math.round(selectedMatch.similarity || selectedMatch.similarity_score || 0)}% passage match
