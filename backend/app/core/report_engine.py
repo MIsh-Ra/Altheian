@@ -102,8 +102,6 @@ def generate_heatmap(matches: List[Dict[str, Any]], page_count: int,
                 page_data[p_num]["total_words"] = w_count
 
     for m in matches:
-        if m.get('is_excluded'):
-            continue
         page = m.get('submitted_page', 1)
         page = min(max(1, page), max(1, page_count))
 
@@ -119,6 +117,9 @@ def generate_heatmap(matches: List[Dict[str, Any]], page_count: int,
             }
 
         page_data[page]["match_count"] += 1
+
+        if m.get('is_excluded'):
+            continue
         m_type = m.get('type', 'internal')
         start = m.get('submitted_start_char')
         end = m.get('submitted_end_char')

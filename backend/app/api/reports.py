@@ -88,7 +88,12 @@ def _build_report_data(document_id: str, db: Session) -> dict:
         for s in sources
     ]
 
-    # Heatmap — from DB (already persisted at analysis time)
+    # Heatmap — from DB (already persisted at analysis time) with live match_count fallback
+    page_match_counts: dict[int, int] = {}
+    for m in report.matches:
+        p = m.submitted_page or 1
+        page_match_counts[p] = page_match_counts.get(p, 0) + 1
+
     heatmap_serialized = [
         {
             "page_number": h.page_number,
@@ -97,7 +102,7 @@ def _build_report_data(document_id: str, db: Session) -> dict:
             "internal_density": h.internal_density or 0.0,
             "web_density": h.web_density or 0.0,
             "color": h.color or "#22c55e",
-            "match_count": h.match_count or 0,
+            "match_count": h.match_count if (h.match_count or 0) > 0 else page_match_counts.get(h.page_number, 0),
             "dominant_type": h.dominant_type or "clean",
         }
         for h in sorted(report.heatmap_pages, key=lambda h: h.page_number)
@@ -185,7 +190,7 @@ def _build_report_data(document_id: str, db: Session) -> dict:
     }
 
 
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_user, get_current_user_flexible
 from app.db.models import User
 
 
@@ -237,6 +242,11 @@ def get_heatmap(document_id: str, db: Session = Depends(get_db),
     ).first()
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
+    page_match_counts: dict[int, int] = {}
+    for m in report.matches:
+        p = m.submitted_page or 1
+        page_match_counts[p] = page_match_counts.get(p, 0) + 1
+
     return [
         {
             "page_number": h.page_number,
@@ -245,7 +255,7 @@ def get_heatmap(document_id: str, db: Session = Depends(get_db),
             "internal_density": h.internal_density or 0.0,
             "web_density": h.web_density or 0.0,
             "color": h.color or "#22c55e",
-            "match_count": h.match_count or 0,
+            "match_count": h.match_count if (h.match_count or 0) > 0 else page_match_counts.get(h.page_number, 0),
         }
         for h in sorted(report.heatmap_pages, key=lambda h: h.page_number)
     ]
@@ -318,8 +328,9 @@ def review_document(document_id: str, req: ReportReviewRequest,
 def view_pdf(
     document_id: str,
     force: bool = False,
+    token: str | None = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_flexible),
 ):
     """
     Generate and stream the PyMuPDF vector-annotated PDF with media_type="application/pdf"
@@ -349,8 +360,19 @@ def view_pdf(
     annotated_dir = upload_dir / "annotated"
     cached_pdf_path = annotated_dir / f"{document_id}.pdf"
 
-    # Return cached PDF if present (unless forced refresh)
-    if not force and cached_pdf_path.is_file() and cached_pdf_path.stat().st_size > 0:
+    # Invalidate cache if pdf_annotator.py service code was updated since the file was cached
+    annotator_file = Path(__file__).resolve().parents[1] / "services" / "pdf_annotator.py"
+    annotator_mtime = annotator_file.stat().st_mtime if annotator_file.is_file() else 0
+
+    cache_is_valid = (
+        not force
+        and cached_pdf_path.is_file()
+        and cached_pdf_path.stat().st_size > 0
+        and cached_pdf_path.stat().st_mtime >= annotator_mtime
+    )
+
+    # Return cached PDF if present and valid
+    if cache_is_valid:
         return FileResponse(
             str(cached_pdf_path),
             media_type="application/pdf",
@@ -403,8 +425,9 @@ def export_pdf(
     document_id: str,
     mode: str = "bundle",
     include_excluded: bool = False,
+    token: str | None = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_flexible),
 ):
     """
     Generate an Alethian forensic PDF audit report.
