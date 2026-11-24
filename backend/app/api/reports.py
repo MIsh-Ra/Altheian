@@ -364,6 +364,20 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
         TableStyle,
     )
 
+    from app.core.glossary import (
+        AUTHOR_PREVIOUS_DRAFTS,
+        IDENTICAL_MATCH,
+        INSTITUTIONAL_REPOSITORY,
+        INTERNET_SOURCES,
+        PARAPHRASED_MATCH,
+        PROPERLY_CITED_SOURCE,
+        SENTENCE_RHYTHM_VARIETY,
+        TEMPLATE_EXEMPTED,
+        WORD_CHOICE_PREDICTABILITY,
+        map_legacy_match_type,
+        map_legacy_source_type,
+    )
+
     buffer = io.BytesIO()
     PAGE_W, PAGE_H = A4
     MARGIN = 20 * mm
@@ -542,7 +556,7 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
                    ParagraphStyle("C2H", fontSize=8.5, leading=11, fontName="Helvetica-Bold", textColor=DARK))],
         [Paragraph(f"{ai_prob_val}%" if ai_det else "N/A",
                    ParagraphStyle("C2Score", fontSize=26, leading=30, fontName="Helvetica-Bold", textColor=ai_color if ai_det else GREY))],
-        [Paragraph("Zero-shot Binoculars perplexity cross-ratio (Qwen2.5-0.5B)" if ai_det else "AI forensic worker unconfigured or inactive",
+        [Paragraph("Automated language model stylistic pattern analysis" if ai_det else "AI writing assessment unavailable",
                    label)],
     ]
     card2_table = Table(card2_content, colWidths=[card_w - 6 * mm])
@@ -568,7 +582,42 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
         ("RIGHTPADDING", (0, 0), (-1, -1), 6),
     ]))
     story.append(score_card_container)
-    story.append(Spacer(1, 3.5 * mm))
+    story.append(Spacer(1, 3 * mm))
+
+    # ── "HOW TO READ THIS AUDIT REPORT" LEGEND BOX ────────────────────────────
+    legend_title = Paragraph("<b>HOW TO READ THIS AUDIT REPORT & ANNOTATION COLOR KEY</b>",
+                             ParagraphStyle("LegTitle", fontSize=8, leading=10, fontName="Helvetica-Bold", textColor=DARK))
+
+    col1_text = (
+        "<b>Originality Score:</b> Measures percentage of content uniquely authored without uncredited textual overlap with academic archives.<br/>"
+        "<b>AI Writing Assessment:</b> Statistical analysis of language model predictability and sentence rhythm indicative of automated generation."
+    )
+    col2_text = (
+        "<font color='#0da6f2'><b>■ Cyan Highlight:</b></font> AI Writing (Soft 30-50%, Med 50-70%, Vibrant 70%+)<br/>"
+        "<font color='#dc2626'><b>■ Red:</b></font> Identical Match &nbsp; "
+        "<font color='#ea580c'><b>■ Orange:</b></font> Paraphrased Match<br/>"
+        "<font color='#16a34a'><b><u>■ Green Underline:</u></b></font> Cited Scholarship &nbsp; "
+        "<font color='#94a3b8'><b>■ Grey:</b></font> Institutional Template"
+    )
+
+    legend_content = [
+        [legend_title, ""],
+        [Paragraph(col1_text, ParagraphStyle("Leg1", fontSize=6.8, leading=9, textColor=SLATE, fontName="Helvetica")),
+         Paragraph(col2_text, ParagraphStyle("Leg2", fontSize=6.8, leading=9, textColor=SLATE, fontName="Helvetica"))]
+    ]
+    legend_table = Table(legend_content, colWidths=[USABLE_W * 0.52, USABLE_W * 0.48])
+    legend_table.setStyle(TableStyle([
+        ("SPAN", (0, 0), (1, 0)),
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+        ("BOX", (0, 0), (-1, -1), 0.7, BORDER),
+        ("LINEBELOW", (0, 0), (1, 0), 0.5, BORDER),
+        ("TOPPADDING", (0, 0), (-1, -1), 2.5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    story.append(legend_table)
+    story.append(Spacer(1, 3 * mm))
 
     # ── EXCLUSIONS & CITATION GROUNDING CALLOUTS ──────────────────────────────
     raw_matches_list = report_data.get("matches", [])
@@ -620,11 +669,11 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
     int_pct = scores.get("internal_contribution", 0)
     web_pct = scores.get("web_contribution", 0)
     contrib_data = [
-        ["Archive Corpus", "Contribution", "Unique Sources", "Matched Passages"],
-        ["University Institutional Theses", f"{int_pct:.1f}%",
+        ["Scholarly & Web Repository", "Contribution", "Unique Sources", "Matched Passages"],
+        [INSTITUTIONAL_REPOSITORY, f"{int_pct:.1f}%",
          str(sum(1 for s in sources if s.get("type") == "internal")),
          str(summary.get("internal_exact", 0) + summary.get("internal_paraphrase", 0))],
-        ["Web Dragnet Online Gateway", f"{web_pct:.1f}%",
+        [INTERNET_SOURCES, f"{web_pct:.1f}%",
          str(sum(1 for s in sources if s.get("type") == "web")),
          str(summary.get("web_matches", 0))],
     ]
@@ -654,19 +703,19 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
             Paragraph(str(summary.get("unique_sources", 0)), body_bold),
         ],
         [
-            Paragraph("<b>Archival Exact Matches:</b>", body),
+            Paragraph("<b>Identical Matches (Verbatim):</b>", body),
             Paragraph(str(summary.get("internal_exact", 0)), body),
-            Paragraph("<b>Archival Paraphrases:</b>", body),
+            Paragraph("<b>Paraphrased / Modified:</b>", body),
             Paragraph(str(summary.get("internal_paraphrase", 0)), body),
         ],
         [
-            Paragraph("<b>Web Dragnet Matches:</b>", body),
+            Paragraph("<b>Internet & Online Matches:</b>", body),
             Paragraph(str(summary.get("web_matches", 0)), body),
             Paragraph("<b>Pages with Active Overlap:</b>", body),
             Paragraph(f"{summary.get('pages_with_matches', 0)} / {report_data.get('page_count', '—')}", body),
         ],
         [
-            Paragraph("<b>Excluded Self-Draft Matches:</b>", body),
+            Paragraph("<b>Author Drafts (Exempted):</b>", body),
             Paragraph(str(excluded_count), body),
             Paragraph("<b>Average Match Length:</b>", body),
             Paragraph(f"{summary.get('avg_match_length_words', 0):.0f} words", body),
@@ -688,38 +737,32 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
 
     # ── AI FORENSIC DIAGNOSTICS & FLAGGED PASSAGES ──────────────────────────
     if ai_det:
-        story.append(Paragraph("AI Forensic Diagnostic Breakdown", h2))
+        story.append(Paragraph("AI Writing Assessment & Stylistic Breakdown", h2))
         ai_diag_data = [
             ["Metric", "Measured Value", "Reference Baseline", "Status"],
             [
-                Paragraph("Binoculars Perplexity Ratio", body_bold),
+                Paragraph("Word Choice Predictability Index", body_bold),
                 Paragraph(f"{ai_det.get('binoculars_ratio', 0.0):.4f}" if ai_det.get('binoculars_ratio') is not None else "N/A", mono),
-                Paragraph("Threshold: 0.9015", body),
-                Paragraph("<font color='#ea580c'><b>ELEVATED</b></font>" if (ai_det.get('binoculars_ratio') or 0.0) >= 0.9015 else "<font color='#16a34a'><b>NORMAL</b></font>", body),
+                Paragraph("Standard human writing baseline: &lt; 0.9015", body),
+                Paragraph("<font color='#ea580c'><b>ELEVATED</b></font>" if (ai_det.get('binoculars_ratio') or 0.0) >= 0.9015 else "<font color='#16a34a'><b>NATURAL</b></font>", body),
             ],
             [
-                Paragraph("DNA-Detect Token Burstiness", body_bold),
+                Paragraph("Sentence Rhythm & Structural Variety", body_bold),
                 Paragraph(f"{ai_det.get('dna_detect_score', 0.0):.4f}" if ai_det.get('dna_detect_score') is not None else "N/A", mono),
-                Paragraph("Cross-token divergence metric", body),
+                Paragraph("Natural syntactic pacing & clause variation", body),
                 Paragraph("<b>ANALYZED</b>", body),
             ],
             [
-                Paragraph("Multi-Stage Neural Verdict", body_bold),
-                Paragraph(html.escape(str(ai_det.get("verdict") or "T0_HUMAN")), mono),
-                Paragraph("Observer: Qwen2.5-0.5B • Performer: Qwen2.5-0.5B-Instruct", body),
+                Paragraph("Overall Stylistic Verdict", body_bold),
+                Paragraph(html.escape(str(ai_det.get("verdict_label") or "Human Authored")), mono),
+                Paragraph("Dual-observer statistical evaluation", body),
                 Paragraph(f"<b>{html.escape(str(ai_det.get('verdict_label') or 'Human'))}</b>", body),
             ],
             [
-                Paragraph("Analyzed Prose Tokens", body_bold),
-                Paragraph(f"{ai_det.get('prose_token_count', 0):,} tokens", body),
-                Paragraph("Min threshold: 150 tokens", body),
-                Paragraph("<b>VALID</b>", body),
-            ],
-            [
-                Paragraph("Neural Inference Hardware", body_bold),
-                Paragraph(f"{ai_det.get('latency_ms', 0):.0f} ms latency", body),
-                Paragraph("NVIDIA Tesla V100 GPU (SDPA FP16)", body),
-                Paragraph("<b>OPERATIONAL</b>", body),
+                Paragraph("Analyzed Document Scope", body_bold),
+                Paragraph(f"{ai_det.get('prose_token_count', 0):,} prose tokens", body),
+                Paragraph(f"Full text verification ({word_count:,} words)", body),
+                Paragraph("<b>COMPLETE</b>", body),
             ],
         ]
         ai_table = Table(ai_diag_data, colWidths=[48 * mm, 32 * mm, 66 * mm, 34 * mm])
@@ -871,7 +914,7 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
                 "The submitted document passed all archive originality checks."
             )
         empty_box = [
-            [Paragraph("<b>Archive & Web Dragnet Clearance:</b> 0 uncredited external or third-party matches found.", body_bold)],
+            [Paragraph("<b>Repository & Internet Archive Clearance:</b> 0 uncredited external or third-party matches found.", body_bold)],
             [Paragraph(clearance_msg, body)],
         ]
         empty_table = Table(empty_box, colWidths=[USABLE_W])
@@ -899,12 +942,32 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
 
             raw_sub = m.get("submitted_text") or ""
             raw_src = m.get("source_text") or ""
-            submitted_text = html.escape(raw_sub[:300])
-            source_text = html.escape(raw_src[:300])
+            # Context classification & guidance
+            sub_lower = raw_sub.lower()
+            is_template = any(phrase in sub_lower for phrase in [
+                "certificate of bonafide work",
+                "bonafide certificate",
+                "this is to certify that",
+                "declaration",
+                "submitted in partial fulfillment",
+                "all rights reserved",
+                "supervision and guidance",
+                "bonafide record of work",
+            ])
+            is_cited = m.get("is_excluded") and ("reference" in (m.get("exclude_reason") or "").lower() or "citation" in (m.get("exclude_reason") or "").lower())
+            is_draft = m.get("is_excluded") and ("draft" in (m.get("exclude_reason") or "").lower() or "prior submission" in (m.get("exclude_reason") or "").lower())
+
+            context_badge = ""
+            if is_template:
+                context_badge = "<br/><font size=6.5 color='#f1f5f9'><b>Institutional Certificate Template • Zero penalty recommended</b></font>"
+            elif is_cited:
+                context_badge = "<br/><font size=6.5 color='#d1fae5'><b>Properly Cited Source (Exempted)</b></font>"
+            elif is_draft:
+                context_badge = "<br/><font size=6.5 color='#e0f2fe'><b>Author's Previous Draft (Exempted)</b></font>"
 
             match_block = []
             header_data = [[
-                Paragraph(f"Match #{i+1} — {html.escape(mtype_label)}", ParagraphStyle("MHead", fontSize=8, fontName="Helvetica-Bold", textColor=WHITE, leading=10)),
+                Paragraph(f"Match #{i+1} — {html.escape(mtype_label)}{context_badge}", ParagraphStyle("MHead", fontSize=8, fontName="Helvetica-Bold", textColor=WHITE, leading=10)),
                 Paragraph(f"Page {html.escape(str(m.get('submitted_page', '—')))} • {sim}% similarity", ParagraphStyle("MSub", fontSize=8, fontName="Helvetica", textColor=WHITE, alignment=TA_RIGHT, leading=10)),
             ]]
             header_table = Table(header_data, colWidths=[USABLE_W * 0.65, USABLE_W * 0.35])

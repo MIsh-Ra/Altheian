@@ -29,3 +29,4 @@ pytest-asyncio
 pypdf
 pytesseract
 pdf2image
+pymupdf
