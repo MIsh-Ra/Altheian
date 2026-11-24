@@ -108,141 +108,141 @@ export default function Dashboard() {
     };
 
     return (
-        <div className="h-full px-8 py-8 w-full max-w-7xl mx-auto flex flex-col space-y-8">
+        <div className="min-h-full px-6 py-6 w-full max-w-7xl mx-auto flex flex-col space-y-6 pb-20">
             <header className="flex justify-between items-end">
                 <div>
-                    <h1 className="text-3xl font-semibold tracking-tight text-on-background">Faculty Dashboard</h1>
+                    <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-on-background">Faculty Dashboard</h1>
                     <p className="text-sm text-on-surface-variant mt-1 tracking-wide">Review submitted theses and trigger deep analytics.</p>
                 </div>
                 <div className="w-72">
-                    <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Filter by Course ID</label>
+                    <label className="block text-xs font-medium text-on-surface-variant mb-1.5">Filter by course ID</label>
                     <input
                         type="text"
                         value={courseFilter}
                         onChange={(e) => setCourseFilter(e.target.value)}
                         placeholder="e.g. CS101"
-                        className="block w-full px-4 py-2 bg-surface-container-highest ghost-border rounded-sm focus:outline-none focus:border-outline focus:ring-0 text-sm text-on-surface placeholder:text-on-surface-variant/50 transition-all font-medium"
+                        className="block w-full px-3 py-1.5 bg-surface-container-highest ghost-border rounded-sm focus:outline-none focus:border-outline focus:ring-0 text-sm text-on-surface placeholder:text-on-surface-variant/50 transition-colors font-medium"
                     />
                 </div>
             </header>
 
             {/* Audit Scope Configuration */}
-            <div className="space-y-3">
-                <div className="bg-surface-container rounded-lg p-4 border border-outline-variant/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-2.5">
+                <div className="bg-surface-container-low rounded p-3 border border-ghost flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                     <div className="flex items-center space-x-2 text-on-surface">
-                        <Sliders className="w-4 h-4 text-primary" />
+                        <Sliders className="w-3.5 h-3.5 text-on-surface-variant" />
                         <div>
-                            <span className="text-xs font-bold uppercase tracking-wider text-on-surface">Selective Audit Scope</span>
-                            <span className="text-xs text-on-surface-variant ml-2 font-normal">Choose which forensic checks to run</span>
+                            <span className="text-xs font-semibold text-on-surface">Selective audit scope</span>
+                            <span className="text-xs text-on-surface-variant ml-2 font-normal">Select verification engines</span>
                         </div>
                     </div>
                     {/* Quick Presets */}
-                    <div className="flex items-center space-x-2">
-                        <span className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider mr-1">Presets:</span>
+                    <div className="flex items-center space-x-1.5">
+                        <span className="text-[11px] text-on-surface-variant font-medium mr-1">Presets:</span>
                         <button
                             type="button"
                             onClick={() => setScope({ check_ai: true, check_web: true, check_internal: true })}
-                            className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-all ${
+                            className={`px-2.5 py-1 text-xs rounded border transition-colors cursor-pointer ${
                                 scope.check_ai && scope.check_web && scope.check_internal
-                                    ? 'bg-primary text-on-primary border-primary shadow-xs'
-                                    : 'bg-surface-container-highest text-on-surface-variant border-outline-variant/50 hover:bg-surface-container-high'
+                                    ? 'bg-surface text-on-surface font-semibold border-outline/40 shadow-2xs'
+                                    : 'bg-surface-container text-on-surface-variant border-ghost hover:bg-surface-container-high'
                             }`}
                         >
-                            Full Audit
+                            Full audit
                         </button>
                         <button
                             type="button"
                             onClick={() => setScope({ check_ai: true, check_web: false, check_internal: false })}
-                            className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-all ${
+                            className={`px-2.5 py-1 text-xs rounded border transition-colors cursor-pointer ${
                                 scope.check_ai && !scope.check_web && !scope.check_internal
-                                    ? 'bg-cyan-600 text-white border-cyan-500 shadow-xs'
-                                    : 'bg-surface-container-highest text-on-surface-variant border-outline-variant/50 hover:bg-surface-container-high'
+                                    ? 'bg-surface text-on-surface font-semibold border-outline/40 shadow-2xs'
+                                    : 'bg-surface-container text-on-surface-variant border-ghost hover:bg-surface-container-high'
                             }`}
                         >
-                            ⚡ AI Only (~5s)
+                            AI only (~5s)
                         </button>
                         <button
                             type="button"
                             onClick={() => setScope({ check_ai: false, check_web: true, check_internal: true })}
-                            className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-all ${
+                            className={`px-2.5 py-1 text-xs rounded border transition-colors cursor-pointer ${
                                 !scope.check_ai && scope.check_web && scope.check_internal
-                                    ? 'bg-secondary text-on-secondary border-secondary shadow-xs'
-                                    : 'bg-surface-container-highest text-on-surface-variant border-outline-variant/50 hover:bg-surface-container-high'
+                                    ? 'bg-surface text-on-surface font-semibold border-outline/40 shadow-2xs'
+                                    : 'bg-surface-container text-on-surface-variant border-ghost hover:bg-surface-container-high'
                             }`}
                         >
-                            Plagiarism Only
+                            Plagiarism only
                         </button>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
                     {/* AI Toggle */}
-                    <label className={`flex items-start p-3.5 rounded-lg border transition-all cursor-pointer ${
+                    <label className={`flex items-start p-3 rounded border transition-colors cursor-pointer ${
                         scope.check_ai 
-                            ? 'bg-cyan-950/20 border-cyan-500/50 text-cyan-200 shadow-xs' 
-                            : 'bg-surface-container-lowest border-outline-variant/20 opacity-60 hover:opacity-80'
+                            ? 'bg-surface-container border-outline/40 text-on-surface shadow-2xs' 
+                            : 'bg-surface-container-lowest border-ghost opacity-60 hover:opacity-90'
                     }`}>
                         <input
                             type="checkbox"
                             checked={scope.check_ai}
                             onChange={(e) => setScope(prev => ({ ...prev, check_ai: e.target.checked }))}
-                            className="mt-0.5 h-4 w-4 rounded text-cyan-500 border-gray-600 focus:ring-0 cursor-pointer"
+                            className="mt-0.5 h-4 w-4 rounded accent-primary border-gray-600 focus:ring-0 cursor-pointer"
                         />
                         <div className="ml-3 select-none">
-                            <div className="flex items-center space-x-1.5 font-bold text-xs text-on-surface">
-                                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                                <span>AI Detection (Qwen2.5)</span>
+                            <div className="flex items-center space-x-1.5 font-semibold text-xs text-on-surface">
+                                <Sparkles className="w-3.5 h-3.5 text-on-surface-variant" />
+                                <span>AI writing assessment</span>
                             </div>
-                            <p className="text-[11px] text-on-surface-variant mt-0.5">Perplexity & Binoculars burstiness (~5s)</p>
+                            <p className="text-[11px] text-on-surface-variant mt-0.5">Perplexity and Binoculars cross-entropy (~5s)</p>
                         </div>
                     </label>
 
                     {/* Web Dragnet Toggle */}
-                    <label className={`flex items-start p-3.5 rounded-lg border transition-all cursor-pointer ${
+                    <label className={`flex items-start p-3 rounded border transition-colors cursor-pointer ${
                         scope.check_web 
-                            ? 'bg-blue-950/20 border-blue-500/50 text-blue-200 shadow-xs' 
-                            : 'bg-surface-container-lowest border-outline-variant/20 opacity-60 hover:opacity-80'
+                            ? 'bg-surface-container border-outline/40 text-on-surface shadow-2xs' 
+                            : 'bg-surface-container-lowest border-ghost opacity-60 hover:opacity-90'
                     }`}>
                         <input
                             type="checkbox"
                             checked={scope.check_web}
                             onChange={(e) => setScope(prev => ({ ...prev, check_web: e.target.checked }))}
-                            className="mt-0.5 h-4 w-4 rounded text-blue-500 border-gray-600 focus:ring-0 cursor-pointer"
+                            className="mt-0.5 h-4 w-4 rounded accent-primary border-gray-600 focus:ring-0 cursor-pointer"
                         />
                         <div className="ml-3 select-none">
-                            <div className="flex items-center space-x-1.5 font-bold text-xs text-on-surface">
-                                <Globe className="w-3.5 h-3.5 text-blue-400" />
-                                <span>Live Web Dragnet</span>
+                            <div className="flex items-center space-x-1.5 font-semibold text-xs text-on-surface">
+                                <Globe className="w-3.5 h-3.5 text-on-surface-variant" />
+                                <span>Internet & online sources</span>
                             </div>
-                            <p className="text-[11px] text-on-surface-variant mt-0.5">Wayback Machine & Google search (~30s)</p>
+                            <p className="text-[11px] text-on-surface-variant mt-0.5">Live web indexing and archive (~30s)</p>
                         </div>
                     </label>
 
                     {/* Internal Archive Toggle */}
-                    <label className={`flex items-start p-3.5 rounded-lg border transition-all cursor-pointer ${
+                    <label className={`flex items-start p-3 rounded border transition-colors cursor-pointer ${
                         scope.check_internal 
-                            ? 'bg-purple-950/20 border-purple-500/50 text-purple-200 shadow-xs' 
-                            : 'bg-surface-container-lowest border-outline-variant/20 opacity-60 hover:opacity-80'
+                            ? 'bg-surface-container border-outline/40 text-on-surface shadow-2xs' 
+                            : 'bg-surface-container-lowest border-ghost opacity-60 hover:opacity-90'
                     }`}>
                         <input
                             type="checkbox"
                             checked={scope.check_internal}
                             onChange={(e) => setScope(prev => ({ ...prev, check_internal: e.target.checked }))}
-                            className="mt-0.5 h-4 w-4 rounded text-purple-500 border-gray-600 focus:ring-0 cursor-pointer"
+                            className="mt-0.5 h-4 w-4 rounded accent-primary border-gray-600 focus:ring-0 cursor-pointer"
                         />
                         <div className="ml-3 select-none">
-                            <div className="flex items-center space-x-1.5 font-bold text-xs text-on-surface">
-                                <Database className="w-3.5 h-3.5 text-purple-400" />
-                                <span>Theses Archive</span>
+                            <div className="flex items-center space-x-1.5 font-semibold text-xs text-on-surface">
+                                <Database className="w-3.5 h-3.5 text-on-surface-variant" />
+                                <span>Institutional repository</span>
                             </div>
-                            <p className="text-[11px] text-on-surface-variant mt-0.5">Internal Qdrant vector similarity (~3s)</p>
+                            <p className="text-[11px] text-on-surface-variant mt-0.5">Vector similarity across submitted theses (~3s)</p>
                         </div>
                     </label>
                 </div>
             </div>
 
             {/* Upload Section */}
-            <section className="bg-surface-container-lowest rounded-md p-10 text-center border-2 border-dashed border-outline-variant/30 hover:bg-surface-container-low transition-colors cursor-pointer group relative shadow-sm">
+            <section className="bg-surface-container-lowest rounded-md p-8 text-center border border-dashed border-outline-variant/40 hover:bg-surface-container-low transition-colors cursor-pointer group relative shadow-xs">
                 <input
                     type="file"
                     multiple
@@ -253,24 +253,24 @@ export default function Dashboard() {
                 <div className="flex flex-col items-center">
                     {uploading ? (
                         <div className="p-2 flex items-center justify-center">
-                            <AgentOrb state="working" size={64} />
+                            <AgentOrb state="working" size={56} />
                         </div>
                     ) : (
-                        <div className="p-4 bg-primary-container rounded-full group-hover:bg-primary transition-colors text-on-primary shadow-ambient">
-                            <Upload className="w-8 h-8" />
+                        <div className="p-3.5 bg-surface-container-high rounded-full group-hover:bg-primary-container transition-colors text-on-surface-variant group-hover:text-on-primary">
+                            <Upload className="w-6 h-6" />
                         </div>
                     )}
-                    <h3 className="mt-6 text-lg font-bold tracking-tight text-on-surface">
-                        {uploading ? "Ingesting Evidence Into Pipeline..." : "Start New Forensic Analysis"}
+                    <h3 className="mt-4 text-base font-semibold tracking-tight text-on-surface">
+                        {uploading ? "Ingesting evidence into pipeline..." : "Start new forensic analysis"}
                     </h3>
-                    <p className="mt-2 text-sm font-medium text-on-surface-variant max-w-md">Drag and drop student thesis submissions (PDF) here to initialize the Web Dragnet and Internal Similarity pipelines.</p>
+                    <p className="mt-1 text-xs text-on-surface-variant max-w-md">Drag and drop student thesis submissions (PDF) here to initialize the verification pipeline.</p>
                 </div>
             </section>
 
             {/* Recent Analysis List */}
-            <section className="flex-1 flex flex-col min-h-0 bg-surface-container shadow-sm p-6 rounded-lg">
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-sm font-bold uppercase tracking-widest text-on-surface">Investigation Log</h3>
+            <section className="flex flex-col bg-surface-container shadow-sm p-6 rounded-lg min-h-[300px]">
+                <div className="flex justify-between items-center mb-5">
+                    <h3 className="text-sm font-semibold tracking-wide text-on-surface">Investigation log</h3>
                     <button aria-label="Refresh Documents List" onClick={loadDocuments} className="text-on-surface-variant hover:text-primary transition-colors">
                         <RefreshCcw className="w-4 h-4" />
                     </button>
@@ -278,11 +278,11 @@ export default function Dashboard() {
                 
                 {loading ? (
                     <div className="p-12 text-center text-on-surface-variant flex flex-col justify-center items-center h-full space-y-4">
-                        <AgentOrb state="solving" size={64} />
-                        <span className="font-medium text-sm">Synchronizing Database...</span>
+                        <AgentOrb state="solving" size={56} />
+                        <span className="font-medium text-xs">Synchronizing database...</span>
                     </div>
                 ) : (
-                    <div className="flex-1 overflow-y-auto pr-2 space-y-4">
+                    <div className="space-y-3">
                         {documents.map((doc, index) => {
                             const isError = doc.status === 'error' || doc.status === 'failed';
                             const isClear = doc.status === 'complete' && doc.score >= 80;
@@ -297,45 +297,45 @@ export default function Dashboard() {
                                 <div
                                     key={doc.id || index}
                                     onClick={() => navigate(`/report/${doc.id}`)}
-                                    className="group relative flex flex-col bg-surface-container-lowest rounded-md shadow-sm hover:shadow-ambient overflow-hidden cursor-pointer transition-all hover:-translate-y-[1px]"
+                                    className="group relative flex flex-col bg-surface-container-lowest rounded-sm border border-ghost hover:border-outline/40 shadow-xs overflow-hidden cursor-pointer transition-colors"
                                 >
-                                    <div className="flex items-center justify-between p-5">
-                                        <div className="flex items-center space-x-5">
+                                    <div className="flex items-center justify-between p-4">
+                                        <div className="flex items-center space-x-4">
                                             {/* Status Accent Bar */}
                                             <div className={`absolute left-0 top-0 bottom-0 w-1 ${accentClass}`}></div>
                                             
-                                            <div className="pl-2">
-                                                <div className="p-3 bg-surface-container rounded-sm group-hover:bg-primary-container transition-colors group-hover:text-on-primary">
-                                                    <FileText className="w-6 h-6 text-on-surface-variant group-hover:text-on-primary transition-colors" />
+                                            <div className="pl-1.5">
+                                                <div className="p-2.5 bg-surface-container rounded-xs group-hover:bg-surface-container-high transition-colors">
+                                                    <FileText className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
                                                 </div>
                                             </div>
-                                            <div className="flex flex-col space-y-1">
-                                                <h4 className="text-sm font-bold text-on-surface">{doc.filename || doc.title || 'Unknown Document'}</h4>
-                                                <div className="text-xs font-medium text-on-surface-variant flex items-center space-x-2">
-                                                    <span>Author: <span className="text-on-surface font-semibold">{doc.author || 'Unknown'}</span></span>
+                                            <div className="flex flex-col space-y-0.5">
+                                                <h4 className="text-sm font-semibold text-on-surface">{doc.filename || doc.title || 'Unknown Document'}</h4>
+                                                <div className="text-xs text-on-surface-variant flex items-center space-x-2">
+                                                    <span>Author: <span className="text-on-surface font-medium">{doc.author || 'Unknown'}</span></span>
                                                     <span>•</span>
                                                     <span>Uploaded: {new Date(doc.upload_date).toLocaleDateString()}</span>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center space-x-6 pr-2">
+                                        <div className="flex items-center space-x-5 pr-2">
                                             {getStatusBadge(doc.status, doc.score)}
-                                            <ArrowRight className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
+                                            <ArrowRight className="w-4 h-4 text-on-surface-variant group-hover:text-primary transition-colors" />
                                         </div>
                                     </div>
                                     
                                     {/* Progress indicator for active ingestion */}
                                     {['pending', 'ingesting', 'analyzing', 'processing'].includes(doc.status) && (
-                                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-surface-container-high">
-                                            <div className="h-full bg-secondary-fixed animate-pulse" style={{ width: doc.status === 'processing' ? '60%' : '30%' }}></div>
+                                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-surface-container-high">
+                                            <div className="h-full bg-primary/70 transition-all duration-300" style={{ width: doc.status === 'processing' ? '60%' : '30%' }}></div>
                                         </div>
                                     )}
                                 </div>
                             );
                         })}
                         {documents.length === 0 && (
-                            <div className="p-12 text-center text-on-surface-variant flex flex-col justify-center items-center h-full">
-                                <span className="font-medium text-sm">No forensic records found for this criteria.</span>
+                            <div className="p-10 text-center text-on-surface-variant flex flex-col justify-center items-center">
+                                <span className="font-normal text-xs">No forensic records found for this criteria.</span>
                             </div>
                         )}
                     </div>
