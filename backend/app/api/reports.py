@@ -311,14 +311,20 @@ def review_document(document_id: str, req: ReportReviewRequest,
     return {"status": "success", "message": "Document marked as reviewed"}
 
 
+@router.get("/{document_id}/export-pdf")
 @router.get("/{document_id}/export/pdf")
-def export_pdf(document_id: str,
-               include_excluded: bool = False,
-               db: Session = Depends(get_db),
-               current_user: User = Depends(get_current_user)):
+def export_pdf(
+    document_id: str,
+    mode: str = "bundle",
+    include_excluded: bool = False,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """
-    Generate a comprehensive Alethian forensic PDF report per Report_Design_v2 spec.
-    Phase 3 full implementation: cover page, source summary, match details.
+    Generate an Alethian forensic PDF audit report.
+    - mode="bundle" (default): Executive audit (pages 1-3) stitched with
+      the in-situ highlighted student thesis document (pages 4+).
+    - mode="summary": Executive audit summary report only.
     """
     report = db.query(Report).join(Document).filter(
         Report.document_id == document_id,
@@ -329,11 +335,56 @@ def export_pdf(document_id: str,
 
     report_data = _build_report_data(document_id, db)
     from fastapi.responses import StreamingResponse
-    buffer = _build_pdf(report_data, include_excluded=include_excluded)
+    summary_buffer = _build_pdf(report_data, include_excluded=include_excluded)
+
+    # Return summary-only if requested
+    if mode.lower() == "summary":
+        return StreamingResponse(
+            summary_buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=alethian_summary_{document_id[:8]}.pdf"},
+        )
+
+    # Bundle mode: locate original document on disk, annotate in-situ, and stitch
+    from pathlib import Path
+    from app.core.config import settings
+    from app.services.pdf_annotator import annotate_document_pdf, stitch_bundle_pdf
+
+    doc_obj = report.document
+    file_path = None
+    potential_paths = []
+
+    if doc_obj:
+        if getattr(doc_obj, "file_path", None):
+            potential_paths.append(Path(doc_obj.file_path))
+        if doc_obj.meta_data and isinstance(doc_obj.meta_data, dict):
+            if doc_obj.meta_data.get("file_path"):
+                potential_paths.append(Path(doc_obj.meta_data["file_path"]))
+
+        upload_dir = Path(settings.UPLOAD_DIR) if getattr(settings, "UPLOAD_DIR", None) else (Path(__file__).resolve().parents[3] / "uploads")
+        if upload_dir.exists():
+            if doc_obj.filename:
+                potential_paths.append(upload_dir / doc_obj.filename)
+                potential_paths.extend(list(upload_dir.glob(f"*{doc_obj.filename}")))
+            potential_paths.extend(list(upload_dir.glob(f"*{doc_obj.id}*")))
+
+    for p in potential_paths:
+        if p and p.is_file():
+            file_path = str(p)
+            break
+
+    try:
+        annotated_thesis_bytes = annotate_document_pdf(file_path, report_data)
+        stitched_pdf_bytes = stitch_bundle_pdf(summary_buffer.getvalue(), annotated_thesis_bytes)
+        output_buffer = io.BytesIO(stitched_pdf_bytes)
+        output_buffer.seek(0)
+    except Exception as exc:
+        output_buffer = summary_buffer
+
     return StreamingResponse(
-        buffer,
+        output_buffer,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=alethian_report_{document_id[:8]}.pdf"},
+        headers={"Content-Disposition": f"attachment; filename=alethian_audit_bundle_{document_id[:8]}.pdf"},
     )
 
 
