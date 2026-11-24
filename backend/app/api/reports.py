@@ -315,6 +315,86 @@ def review_document(document_id: str, req: ReportReviewRequest,
 
 
 @router.get("/{document_id}/view-pdf")
+def view_pdf(
+    document_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Generate and stream the PyMuPDF vector-annotated PDF with media_type="application/pdf"
+    and Content-Disposition="inline".
+    Annotates the student's authentic uploaded PDF file:
+      - AI writing passages: Turnitin cyan highlight RGB=(0.32, 0.78, 0.86) with graduated opacity.
+      - Plagiarism matches: Red (archive), Orange (paraphrase), Blue (web).
+    Caches the annotated PDF at uploads/annotated/{doc_id}.pdf for millisecond subsequent views.
+    """
+    report = db.query(Report).join(Document).filter(
+        Report.document_id == document_id,
+        Document.user_id == current_user.id
+    ).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    import os
+    from pathlib import Path
+    from fastapi.responses import FileResponse, Response
+    from app.core.config import settings
+    from app.services.pdf_annotator import annotate_document_pdf, find_original_pdf_path
+
+    # Cache location: uploads/annotated/{doc_id}.pdf
+    base_upload = getattr(settings, "UPLOAD_DIR", None)
+    upload_dir = Path(base_upload).resolve() if base_upload else (Path(__file__).resolve().parents[3] / "uploads").resolve()
+    annotated_dir = upload_dir / "annotated"
+    cached_pdf_path = annotated_dir / f"{document_id}.pdf"
+
+    # Return cached PDF if present
+    if cached_pdf_path.is_file() and cached_pdf_path.stat().st_size > 0:
+        return FileResponse(
+            str(cached_pdf_path),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"inline; filename=annotated_{document_id[:8]}.pdf"},
+        )
+
+    report_data = _build_report_data(document_id, db)
+    doc_obj = report.document
+    file_path = find_original_pdf_path(report_data=report_data, doc_obj=doc_obj)
+
+    # Cache resolved file_path in doc_obj metadata if not already set
+    if file_path and doc_obj:
+        meta = dict(doc_obj.meta_data or {})
+        if meta.get("file_path") != str(file_path):
+            meta["file_path"] = str(file_path)
+            doc_obj.meta_data = meta
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
+
+    # Generate PyMuPDF vector annotations with Turnitin cyan & graduated opacity
+    annotated_bytes = annotate_document_pdf(file_path, report_data, use_turnitin_cyan=True)
+
+    # Cache to disk for millisecond reload
+    try:
+        annotated_dir.mkdir(parents=True, exist_ok=True)
+        tmp_cached = cached_pdf_path.with_suffix(".tmp")
+        tmp_cached.write_bytes(annotated_bytes)
+        tmp_cached.replace(cached_pdf_path)
+        return FileResponse(
+            str(cached_pdf_path),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"inline; filename=annotated_{document_id[:8]}.pdf"},
+        )
+    except Exception as cache_err:
+        import logging
+        logging.getLogger(__name__).warning("Failed to cache annotated PDF %s: %s", document_id, cache_err)
+
+    return Response(
+        content=annotated_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"inline; filename=annotated_{document_id[:8]}.pdf"},
+    )
+
+
 @router.get("/{document_id}/export-pdf")
 @router.get("/{document_id}/export/pdf")
 def export_pdf(

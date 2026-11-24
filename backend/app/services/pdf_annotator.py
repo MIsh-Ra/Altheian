@@ -27,6 +27,23 @@ from app.core.glossary import (
 
 logger = logging.getLogger(__name__)
 
+# Standard Turnitin cyan and academic highlight color palette
+RGB_AI_TURNITIN: tuple[float, float, float] = (0.32, 0.78, 0.86)
+RGB_ARCHIVE: tuple[float, float, float] = (0.94, 0.27, 0.27)
+RGB_PARAPHRASE_TURNITIN: tuple[float, float, float] = (0.98, 0.45, 0.09)
+RGB_WEB: tuple[float, float, float] = (0.23, 0.51, 0.96)
+
+
+def _get_ai_graduated_opacity(prob: float) -> float | None:
+    """Return graduated opacity for Turnitin cyan highlight based on probability."""
+    if prob < 0.30:
+        return None
+    if prob < 0.50:
+        return 0.35
+    if prob < 0.70:
+        return 0.60
+    return 0.85
+
 # Standard institutional boilerplate phrases to detect and exempt
 INSTITUTIONAL_TEMPLATES = [
     "certificate of bonafide work",
@@ -250,7 +267,7 @@ def _synthesize_student_pdf(report_data: dict[str, Any]) -> pymupdf.Document:
         # Body text area
         body_rect = pymupdf.Rect(54, 60, 541, 780)
         # Clean formatting: split into paragraphs and insert with line spacing
-        page.insert_textbox(body_rect, text.strip(), fontsize=10, fontname="times", color=(0.1, 0.1, 0.1))
+        page.insert_textbox(body_rect, text.strip(), fontsize=10, fontname="tiro", color=(0.1, 0.1, 0.1))
 
         # Footer page number
         footer_rect = pymupdf.Rect(54, 800, 541, 815)
@@ -300,12 +317,13 @@ def _synthesize_student_pdf(report_data: dict[str, Any]) -> pymupdf.Document:
 def annotate_document_pdf(
     original_pdf_bytes_or_path: str | bytes | io.BytesIO | Path | None,
     report_data: dict[str, Any],
+    use_turnitin_cyan: bool = False,
 ) -> bytes:
     """Open original submitted PDF, annotate with in-situ Turnitin-style highlights, and return bytes.
 
     Annotations Applied:
-      a) AI Writing Passages: Graduated intensity cyan highlights with metadata.
-      b) Plagiarism Passages: Red (identical) and Orange (paraphrased) highlights with [1], [2] badges.
+      a) AI Writing Passages: Turnitin cyan highlight RGB=(0.32, 0.78, 0.86) with graduated opacity.
+      b) Plagiarism Passages: Red (0.94, 0.27, 0.27) for archive, Orange (0.98, 0.45, 0.09) for paraphrase, Blue (0.23, 0.51, 0.96) for web.
       c) Excluded Citations: Green underline annotations for properly cited scholarship.
       d) Institutional Boilerplate: Grey highlight with 'Template Exempted' note.
     """
@@ -356,6 +374,7 @@ def annotate_document_pdf(
     ai_det = report_data.get("ai_detection") or {}
     elevated_windows = ai_det.get("elevated_windows") or ai_det.get("windows") or []
     matches = report_data.get("matches") or []
+    is_turnitin = use_turnitin_cyan or report_data.get("use_turnitin_cyan", False)
 
     # Step 2: Iterate over pages and apply vector annotations
     for page_idx in range(len(doc)):
@@ -382,9 +401,14 @@ def annotate_document_pdf(
                 continue
 
             prob = float(w.get("ai_probability") or w.get("prob") or 0.0)
-            color = _get_ai_graduated_color(prob)
+            if prob < 0.30:
+                continue
+
+            color = RGB_AI_TURNITIN if is_turnitin else _get_ai_graduated_color(prob)
             if not color:
                 continue
+
+            opacity = _get_ai_graduated_opacity(prob) or 0.50
 
             excerpt = (w.get("excerpt") or w.get("text") or "").strip()
             if not excerpt:
@@ -394,6 +418,10 @@ def annotate_document_pdf(
             if rects:
                 annot = page.add_highlight_annot(rects)
                 annot.set_colors(stroke=color)
+                try:
+                    annot.set_opacity(opacity)
+                except Exception:
+                    pass
                 intensity_label = (
                     "High (70%+)"
                     if prob >= 0.70
@@ -446,11 +474,22 @@ def annotate_document_pdf(
                 annot.update()
                 continue
 
-            # (b) Active Plagiarism Matches: Red (verbatim) vs Orange (paraphrased)
-            mtype = (m.get("type") or "web").lower()
+            # (b) Active Plagiarism Matches: Red (archive) vs Orange (paraphrase) vs Blue (web)
+            mtype = (m.get("type") or "").lower()
+            src_type = ((m.get("source") or {}).get("type") or "").lower()
+            is_paraphrase = "paraphrase" in mtype
+            is_web = "web" in mtype or src_type == "web" or bool(m.get("url"))
             is_exact = mtype in ("internal_exact", "exact", "verbatim") or sim >= 90
-            color = RGB_VERBATIM if is_exact else RGB_PARAPHRASE
-            mtype_title = "Identical Match (Verbatim)" if is_exact else "Paraphrased / Modified Match"
+
+            if is_paraphrase:
+                color = RGB_PARAPHRASE_TURNITIN if is_turnitin else RGB_PARAPHRASE
+                mtype_title = "Paraphrased / Modified Match"
+            elif is_web:
+                color = RGB_WEB
+                mtype_title = "Internet / Web Match"
+            else:
+                color = RGB_ARCHIVE if is_turnitin else RGB_VERBATIM
+                mtype_title = "Archive / Institutional Match" if is_turnitin else ("Identical Match (Verbatim)" if is_exact else "Paraphrased / Modified Match")
 
             annot = page.add_highlight_annot(rects)
             annot.set_colors(stroke=color)

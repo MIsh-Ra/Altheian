@@ -58,6 +58,9 @@ async def upload_document(
     request: Request,
     file: UploadFile = File(...), 
     course_id: Optional[str] = Form(None),
+    check_ai: bool = Form(True),
+    check_web: bool = Form(True),
+    check_internal: bool = Form(True),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -70,6 +73,12 @@ async def upload_document(
         size_mb = len(content) / (1024 * 1024)
         if hasattr(settings, 'MAX_UPLOAD_SIZE_MB') and size_mb > getattr(settings, 'MAX_UPLOAD_SIZE_MB', 100):
             raise HTTPException(status_code=413, detail=f"File too large: {size_mb:.1f}MB")
+
+        scan_scope = {
+            "check_ai": check_ai,
+            "check_web": check_web,
+            "check_internal": check_internal,
+        }
 
         from app.core.dedup_cache import compute_file_hash, find_cached_document, clone_cached_document
         file_hash = compute_file_hash(content)
@@ -88,6 +97,10 @@ async def upload_document(
                 user_id=current_user.id,
                 course_id=course_id,
             )
+            meta = dict(cloned.meta_data or {})
+            meta["scan_scope"] = scan_scope
+            cloned.meta_data = meta
+            db.commit()
             cloned.score = cloned.report[0].score if cloned.report else 0.0
             cloned.risk_level = cloned.report[0].risk_level if cloned.report else None
             cloned.originality_score = cloned.report[0].score if cloned.report else None
@@ -136,6 +149,7 @@ async def upload_document(
                 "file_hash": file_hash,
                 "safe_name": safe_name,
                 "original_filename": file.filename,
+                "scan_scope": scan_scope,
             },
         )
 
@@ -146,8 +160,8 @@ async def upload_document(
         # Run in Celery Worker
         sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
         try:
-            from celery_worker import analyze_document
-            analyze_document.delay(new_doc.id, file_path)
+            from celery_worker import run_analysis_pipeline
+            run_analysis_pipeline.delay(new_doc.id, current_user.id, scan_scope=scan_scope)
         except Exception as e:
             logger.warning(f"Failed to dispatch celery task: {e}")
         
