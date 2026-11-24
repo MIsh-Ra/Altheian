@@ -11,6 +11,7 @@ import io
 import logging
 import os
 from collections.abc import Sequence
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -74,6 +75,11 @@ def _get_ai_graduated_color(prob: float) -> tuple[float, float, float] | None:
     return RGB_AI_HIGH          # Vibrant saturated cyan (0.05, 0.65, 0.95)
 
 
+def _get_pdf_timestamp() -> str:
+    """Return ISO 32000-1 compliant PDF date string: D:YYYYMMDDHHmmssZ."""
+    return "D:" + datetime.now(timezone.utc).strftime("%Y%m%d%H%M%SZ")
+
+
 def _search_text_on_page(page: pymupdf.Page, query: str) -> list[pymupdf.Rect]:
     """Robust multi-pass text search across page coordinates."""
     if not query or not query.strip():
@@ -99,17 +105,20 @@ def _search_text_on_page(page: pymupdf.Page, query: str) -> list[pymupdf.Rect]:
     except (RuntimeError, ValueError) as e:
         logger.debug("Dehyphenated search failed: %s", e)
 
-    # 3. For longer passages (split into sliding n-grams)
+    # 3. For longer passages (split into sliding n-grams to handle multi-line wraps)
     words = clean_query.split()
-    if len(words) > 6:
+    if len(words) >= 4:
         matched: list[pymupdf.Rect] = []
-        step = 5
-        for i in range(0, len(words) - 4, step):
-            subphrase = " ".join(words[i : i + 5])
+        step = 3
+        sub_len = min(6, len(words))
+        for i in range(0, len(words) - (sub_len - 1), step):
+            subphrase = " ".join(words[i : i + sub_len])
             try:
                 sub_rects = page.search_for(subphrase)
                 if sub_rects:
-                    matched.extend(sub_rects)
+                    for r in sub_rects:
+                        if not any(abs(r.x0 - ex.x0) < 2 and abs(r.y0 - ex.y0) < 2 for ex in matched):
+                            matched.append(r)
             except (RuntimeError, ValueError) as e:
                 logger.debug("Subphrase search failed: %s", e)
                 continue
@@ -117,6 +126,54 @@ def _search_text_on_page(page: pymupdf.Page, query: str) -> list[pymupdf.Rect]:
             return matched
 
     return []
+
+
+def _find_text_across_pages(
+    doc: pymupdf.Document,
+    query: str,
+    target_page: int | None = None,
+    max_offset: int = 6,
+) -> tuple[int, list[pymupdf.Rect]] | None:
+    """Search for text starting at target_page, then adjacent pages, then document-wide.
+
+    Returns (page_idx, rects) if found, or None.
+    """
+    if not query or not query.strip() or len(doc) == 0:
+        return None
+
+    total_pages = len(doc)
+    pages_to_check: list[int] = []
+
+    if target_page is not None and 1 <= target_page <= total_pages:
+        initial_idx = target_page - 1
+        pages_to_check.append(initial_idx)
+        for offset in range(1, max_offset + 1):
+            plus = initial_idx + offset
+            minus = initial_idx - offset
+            if 0 <= plus < total_pages:
+                pages_to_check.append(plus)
+            if 0 <= minus < total_pages:
+                pages_to_check.append(minus)
+    else:
+        pages_to_check = list(range(total_pages))
+
+    checked: set[int] = set()
+    for p_idx in pages_to_check:
+        if p_idx in checked:
+            continue
+        checked.add(p_idx)
+        rects = _search_text_on_page(doc[p_idx], query)
+        if rects:
+            return p_idx, rects
+
+    # Document-wide fallback scan if not found in candidate neighborhood
+    for p_idx in range(total_pages):
+        if p_idx not in checked:
+            rects = _search_text_on_page(doc[p_idx], query)
+            if rects:
+                return p_idx, rects
+
+    return None
 
 
 def find_original_pdf_path(
@@ -376,12 +433,10 @@ def annotate_document_pdf(
     matches = report_data.get("matches") or []
     is_turnitin = use_turnitin_cyan or report_data.get("use_turnitin_cyan", False)
 
-    # Step 2: Iterate over pages and apply vector annotations
-    for page_idx in range(len(doc)):
-        page = doc[page_idx]
-        current_page_num = page_idx + 1
+    pdf_date = _get_pdf_timestamp()
 
-        # ── (d) Institutional Boilerplate Detection ───────────────────────────
+    # Step 2: Boilerplate Detection across all pages
+    for page in doc:
         for phrase in INSTITUTIONAL_TEMPLATES:
             rects = _search_text_on_page(page, phrase)
             if rects:
@@ -390,134 +445,136 @@ def annotate_document_pdf(
                 annot.set_info(
                     title="Template Exempted",
                     content="Institutional Certificate / Declaration Boilerplate (Zero penalty recommended)",
+                    creationDate=pdf_date,
+                    modDate=pdf_date,
                 )
                 annot.update()
 
-        # ── (a) AI Writing Passages with Graduated Intensity ─────────────────
-        for w in elevated_windows:
-            w_page = w.get("page_number")
-            # If page specified, match it; otherwise search page
-            if w_page and w_page != current_page_num:
-                continue
+    # Step 3: AI Writing Passages with Graduated Intensity & Elastic Page Location
+    for w in elevated_windows:
+        prob = float(w.get("ai_probability") or w.get("prob") or 0.0)
+        if prob < 0.25:
+            continue
 
-            prob = float(w.get("ai_probability") or w.get("prob") or 0.0)
-            if prob < 0.30:
-                continue
+        color = RGB_AI_TURNITIN if is_turnitin else _get_ai_graduated_color(prob)
+        if not color:
+            continue
 
-            color = RGB_AI_TURNITIN if is_turnitin else _get_ai_graduated_color(prob)
-            if not color:
-                continue
+        opacity = _get_ai_graduated_opacity(prob) or 0.50
+        excerpt = (w.get("excerpt") or w.get("text") or "").strip()
+        if not excerpt:
+            continue
 
-            opacity = _get_ai_graduated_opacity(prob) or 0.50
+        found = _find_text_across_pages(doc, excerpt, target_page=w.get("page_number"))
+        if not found:
+            continue
 
-            excerpt = (w.get("excerpt") or w.get("text") or "").strip()
-            if not excerpt:
-                continue
+        found_page_idx, rects = found
+        page = doc[found_page_idx]
+        annot = page.add_highlight_annot(rects)
+        annot.set_colors(stroke=color)
+        try:
+            annot.set_opacity(opacity)
+        except Exception:
+            pass
+        intensity_label = (
+            "High (70%+)"
+            if prob >= 0.70
+            else ("Medium (50-70%)" if prob >= 0.50 else "Moderate (30-50%)")
+        )
+        annot.set_info(
+            title=f"AI Writing Assessment ({intensity_label})",
+            content=f"Probability: {prob*100:.1f}%\nWord Choice Predictability: Elevated",
+            creationDate=pdf_date,
+            modDate=pdf_date,
+        )
+        annot.update()
 
-            rects = _search_text_on_page(page, excerpt)
-            if rects:
-                annot = page.add_highlight_annot(rects)
-                annot.set_colors(stroke=color)
-                try:
-                    annot.set_opacity(opacity)
-                except Exception:
-                    pass
-                intensity_label = (
-                    "High (70%+)"
-                    if prob >= 0.70
-                    else ("Medium (50-70%)" if prob >= 0.50 else "Moderate (30-50%)")
-                )
-                annot.set_info(
-                    title=f"AI Writing Assessment ({intensity_label})",
-                    content=f"Probability: {prob*100:.1f}%\nWord Choice Predictability: Elevated",
-                )
-                annot.update()
+    # Step 4: Plagiarism Passages & Excluded Citations with Elastic Page Location
+    for match_idx, m in enumerate(matches, start=1):
+        sub_text = (m.get("submitted_text") or "").strip()
+        if not sub_text:
+            continue
 
-        # ── (b & c) Plagiarism Passages & Excluded Citations ───────────────────
-        for match_idx, m in enumerate(matches, start=1):
-            m_page = m.get("submitted_page")
-            if m_page and m_page != current_page_num:
-                continue
+        found = _find_text_across_pages(doc, sub_text, target_page=m.get("submitted_page"))
+        if not found:
+            continue
 
-            sub_text = (m.get("submitted_text") or "").strip()
-            if not sub_text:
-                continue
+        found_page_idx, rects = found
+        page = doc[found_page_idx]
 
-            rects = _search_text_on_page(page, sub_text)
-            if not rects:
-                continue
+        is_excluded = bool(m.get("is_excluded"))
+        exclude_reason = (m.get("exclude_reason") or "").lower()
+        src_title = m.get("source_title") or (m.get("source") or {}).get("title") or "Archived Source"
+        sim = round(float(m.get("similarity_score") or m.get("similarity") or 0.0))
 
-            is_excluded = bool(m.get("is_excluded"))
-            exclude_reason = (m.get("exclude_reason") or "").lower()
-            src_title = m.get("source_title") or (m.get("source") or {}).get("title") or "Archived Source"
-            sim = round(float(m.get("similarity_score") or m.get("similarity") or 0.0))
-
-            # (c) Excluded Citations: Apply Green Underline
-            if is_excluded and ("reference" in exclude_reason or "citation" in exclude_reason):
-                annot = page.add_underline_annot(rects)
-                annot.set_colors(stroke=RGB_CITED)
-                annot.set_info(
-                    title=f"Properly Cited Source [{match_idx}] (Exempted)",
-                    content=f"Reference: {src_title}\nValidated scholarly citation - zero penalty applied.",
-                )
-                annot.update()
-                continue
-
-            # Author Draft Exemption: Soft highlight with informational note
-            if is_excluded and ("draft" in exclude_reason or "prior submission" in exclude_reason):
-                annot = page.add_highlight_annot(rects)
-                annot.set_colors(stroke=(0.20, 0.60, 0.90))
-                annot.set_info(
-                    title=f"Author's Previous Draft [{match_idx}] (Exempted)",
-                    content="Student's own earlier submission - isolated from plagiarism penalty.",
-                )
-                annot.update()
-                continue
-
-            # (b) Active Plagiarism Matches: Red (archive) vs Orange (paraphrase) vs Blue (web)
-            mtype = (m.get("type") or "").lower()
-            src_type = ((m.get("source") or {}).get("type") or "").lower()
-            is_paraphrase = "paraphrase" in mtype
-            is_web = "web" in mtype or src_type == "web" or bool(m.get("url"))
-            is_exact = mtype in ("internal_exact", "exact", "verbatim") or sim >= 90
-
-            if is_paraphrase:
-                color = RGB_PARAPHRASE_TURNITIN if is_turnitin else RGB_PARAPHRASE
-                mtype_title = "Paraphrased / Modified Match"
-            elif is_web:
-                color = RGB_WEB
-                mtype_title = "Internet / Web Match"
-            else:
-                color = RGB_ARCHIVE if is_turnitin else RGB_VERBATIM
-                mtype_title = "Archive / Institutional Match" if is_turnitin else ("Identical Match (Verbatim)" if is_exact else "Paraphrased / Modified Match")
-
-            annot = page.add_highlight_annot(rects)
-            annot.set_colors(stroke=color)
+        # (c) Excluded Citations: Apply Green Underline
+        if is_excluded and ("reference" in exclude_reason or "citation" in exclude_reason):
+            annot = page.add_underline_annot(rects)
+            annot.set_colors(stroke=RGB_CITED)
             annot.set_info(
-                title=f"Source Match [{match_idx}] — {mtype_title}",
-                content=f"{sim}% match with {src_title}",
+                title=f"Properly Cited Source [{match_idx}] (Exempted)",
+                content=f"Reference: {src_title}\nValidated scholarly citation - zero penalty applied.",
+                creationDate=pdf_date,
+                modDate=pdf_date,
             )
             annot.update()
+            continue
 
-            # Add Turnitin-style numbered note and margin badge
-            first_rect = rects[0]
-            try:
-                page.add_text_annot(
-                    first_rect.tl,
-                    f"[{match_idx}] {src_title} ({sim}% match)",
-                )
-                # Visual numbered badge
-                badge_x = max(12.0, first_rect.x0 - 18.0)
-                badge_y = max(14.0, first_rect.y0 + 2.0)
-                page.insert_text(
-                    (badge_x, badge_y),
-                    f"[{match_idx}]",
-                    fontsize=7.5,
-                    color=color,
-                    fontname="helv",
-                )
-            except (RuntimeError, ValueError, OSError) as e:
-                logger.debug("Could not add badge annotation: %s", e)
+        # Author Draft Exemption: Soft highlight with informational note
+        if is_excluded and ("draft" in exclude_reason or "prior submission" in exclude_reason):
+            annot = page.add_highlight_annot(rects)
+            annot.set_colors(stroke=(0.20, 0.60, 0.90))
+            annot.set_info(
+                title=f"Author's Previous Draft [{match_idx}] (Exempted)",
+                content="Student's own earlier submission - isolated from plagiarism penalty.",
+                creationDate=pdf_date,
+                modDate=pdf_date,
+            )
+            annot.update()
+            continue
+
+        # (b) Active Plagiarism Matches: Red (archive) vs Orange (paraphrase) vs Blue (web)
+        mtype = (m.get("type") or "").lower()
+        src_type = ((m.get("source") or {}).get("type") or "").lower()
+        is_paraphrase = "paraphrase" in mtype
+        is_web = "web" in mtype or src_type == "web" or bool(m.get("url"))
+        is_exact = mtype in ("internal_exact", "exact", "verbatim") or sim >= 90
+
+        if is_paraphrase:
+            color = RGB_PARAPHRASE_TURNITIN if is_turnitin else RGB_PARAPHRASE
+            mtype_title = "Paraphrased / Modified Match"
+        elif is_web:
+            color = RGB_WEB
+            mtype_title = "Internet / Web Match"
+        else:
+            color = RGB_ARCHIVE if is_turnitin else RGB_VERBATIM
+            mtype_title = "Archive / Institutional Match" if is_turnitin else ("Identical Match (Verbatim)" if is_exact else "Paraphrased / Modified Match")
+
+        annot = page.add_highlight_annot(rects)
+        annot.set_colors(stroke=color)
+        annot.set_info(
+            title=f"Source Match [{match_idx}] — {mtype_title}",
+            content=f"{sim}% match with {src_title}",
+            creationDate=pdf_date,
+            modDate=pdf_date,
+        )
+        annot.update()
+
+        # Turnitin-style margin badge (NO opaque sticky note blobs covering text!)
+        first_rect = rects[0]
+        try:
+            badge_x = max(12.0, first_rect.x0 - 18.0)
+            badge_y = max(14.0, first_rect.y0 + 2.0)
+            page.insert_text(
+                (badge_x, badge_y),
+                f"[{match_idx}]",
+                fontsize=7.5,
+                color=color,
+                fontname="helv",
+            )
+        except (RuntimeError, ValueError, OSError) as e:
+            logger.debug("Could not add badge annotation: %s", e)
 
     output_bytes = doc.tobytes(deflate=True, garbage=3)
     doc.close()

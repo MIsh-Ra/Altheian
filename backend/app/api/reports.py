@@ -317,6 +317,7 @@ def review_document(document_id: str, req: ReportReviewRequest,
 @router.get("/{document_id}/view-pdf")
 def view_pdf(
     document_id: str,
+    force: bool = False,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -327,6 +328,7 @@ def view_pdf(
       - AI writing passages: Turnitin cyan highlight RGB=(0.32, 0.78, 0.86) with graduated opacity.
       - Plagiarism matches: Red (archive), Orange (paraphrase), Blue (web).
     Caches the annotated PDF at uploads/annotated/{doc_id}.pdf for millisecond subsequent views.
+    Pass ?force=true to invalidate cache and re-annotate.
     """
     report = db.query(Report).join(Document).filter(
         Report.document_id == document_id,
@@ -347,8 +349,8 @@ def view_pdf(
     annotated_dir = upload_dir / "annotated"
     cached_pdf_path = annotated_dir / f"{document_id}.pdf"
 
-    # Return cached PDF if present
-    if cached_pdf_path.is_file() and cached_pdf_path.stat().st_size > 0:
+    # Return cached PDF if present (unless forced refresh)
+    if not force and cached_pdf_path.is_file() and cached_pdf_path.stat().st_size > 0:
         return FileResponse(
             str(cached_pdf_path),
             media_type="application/pdf",

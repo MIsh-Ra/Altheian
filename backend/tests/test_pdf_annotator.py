@@ -146,9 +146,16 @@ class TestPdfAnnotator:
         assert any(_colors_match(c, RGB_VERBATIM) for c in colors_found)
         assert any(_colors_match(c, RGB_PARAPHRASE) for c in colors_found)
 
-        # Check for text note annotation containing badge information
-        text_annots = [a for a in annots if a.type[0] == 0]  # Type 0 is Text Note
-        assert len(text_annots) >= 1
+        # Ensure no obstructive sticky notes (type 0) cover text/formulas
+        text_annots = [a for a in annots if a.type[0] == 0]
+        assert len(text_annots) == 0
+
+        # Verify ISO 32000-1 timestamp metadata exists on all highlights (prevents Jan 1, 1970 bug)
+        for h in highlight_annots:
+            assert h.info.get("creationDate", "").startswith("D:")
+            assert h.info.get("modDate", "").startswith("D:")
+            assert len(h.info.get("title", "")) > 0
+            assert len(h.info.get("content", "")) > 0
 
     def test_excluded_citations_green_underline(self):
         """Verify properly cited passages receive green underline annotations."""
@@ -295,3 +302,46 @@ class TestPdfAnnotator:
 
         # 3. Direct explicit path that does not exist should fall back gracefully
         assert find_original_pdf_path(explicit_path="/non/existent/path.pdf") is None
+
+    def test_elastic_page_offset_resolution(self):
+        """Verify that when database stores page 1 but text is on page 4 (front-matter offset), it is found and highlighted on page 4."""
+        doc = pymupdf.open()
+        # Page 1: Cover
+        p1 = doc.new_page(width=595, height=842)
+        p1.insert_text((50, 100), "Project Report Cover Page")
+        # Page 2: Certificate
+        p2 = doc.new_page(width=595, height=842)
+        p2.insert_text((50, 100), "Certificate of Bonafide Work")
+        # Page 3: Declaration
+        p3 = doc.new_page(width=595, height=842)
+        p3.insert_text((50, 100), "Student Declaration")
+        # Page 4: Body with actual target passage
+        p4 = doc.new_page(width=595, height=842)
+        p4.insert_text((50, 100), "Here we utilize two GCN layers followed by relational attention.")
+        pdf_bytes = doc.tobytes()
+
+        # Report data with offset page number (stored as page 1 instead of page 4)
+        report_data = {
+            "ai_detection": {
+                "elevated_windows": [
+                    {
+                        "page_number": 1,  # Stored offset!
+                        "excerpt": "two GCN layers followed by relational attention",
+                        "ai_probability": 0.88,
+                        "risk_level": "HIGH",
+                    }
+                ]
+            }
+        }
+
+        annotated_bytes = annotate_document_pdf(pdf_bytes, report_data, use_turnitin_cyan=True)
+        annotated_doc = pymupdf.open(stream=annotated_bytes, filetype="pdf")
+
+        # Page 1 should NOT have the AI highlight
+        assert len(list(annotated_doc[0].annots())) == 0
+        # Page 4 (index 3) MUST have the AI highlight
+        page4_annots = list(annotated_doc[3].annots())
+        assert len(page4_annots) >= 1
+        assert page4_annots[0].info.get("creationDate", "").startswith("D:")
+        assert "AI Writing Assessment" in page4_annots[0].info.get("title", "")
+
