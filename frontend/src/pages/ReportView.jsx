@@ -73,7 +73,7 @@ export default function ReportView() {
     useEffect(() => {
         if (!selectedMatchId) return;
         setDiffDismissed(false);
-        const match = (report?.matches || []).find(m => m.id === selectedMatchId);
+        const match = (report?.matches || []).find(m => String(m.id) === String(selectedMatchId));
         if (match?.submitted_page && setCurrentPage) {
             setCurrentPage(match.submitted_page);
         }
@@ -157,7 +157,7 @@ export default function ReportView() {
         return true;
     });
 
-    const selectedMatch = filteredMatches.find(m => m.id === selectedMatchId) ?? null;
+    const selectedMatch = filteredMatches.find(m => String(m.id) === String(selectedMatchId)) ?? null;
     const showDiff = selectedMatch && !diffDismissed;
     const sources = report.sources || [];
     const origScore = report.scores?.originality_score ?? 100;

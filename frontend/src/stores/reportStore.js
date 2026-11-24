@@ -4,6 +4,7 @@ const initialState = {
     selectedMatchId: null,
     selectedSourceId: null,
     currentPage: 1,
+    pageNavKey: 0,
     filterTypes: {
         internal_exact: true,
         internal_paraphrase: true,
@@ -23,7 +24,7 @@ export const useReportStore = create((set, get) => ({
     
     setSelectedMatch: (id) => set({ selectedMatchId: id }),
     setSelectedSource: (id) => set({ selectedSourceId: id }),
-    setCurrentPage: (n) => set({ currentPage: n }),
+    setCurrentPage: (n) => set((state) => ({ currentPage: n, pageNavKey: (state.pageNavKey || 0) + 1 })),
     toggleFilterType: (type) => set((state) => ({
         filterTypes: {
             ...state.filterTypes,

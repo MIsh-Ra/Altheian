@@ -60,4 +60,21 @@ describe('reportStore', () => {
         expect(state.selectedWindowIndex).toBeNull();
         expect(state.showTamperDrawer).toBe(false);
     });
+
+    it('updates currentPage and increments pageNavKey deterministically', () => {
+        const { setCurrentPage, resetReportStore } = useReportStore.getState();
+        resetReportStore();
+        expect(useReportStore.getState().currentPage).toBe(1);
+        expect(useReportStore.getState().pageNavKey).toBe(0);
+
+        setCurrentPage(5);
+        expect(useReportStore.getState().currentPage).toBe(5);
+        expect(useReportStore.getState().pageNavKey).toBe(1);
+
+        // Setting the same page still increments pageNavKey to re-trigger iframe navigation
+        setCurrentPage(5);
+        expect(useReportStore.getState().currentPage).toBe(5);
+        expect(useReportStore.getState().pageNavKey).toBe(2);
+    });
 });
+
