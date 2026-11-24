@@ -1,9 +1,6 @@
 """Tests for in-situ vector PDF annotator and bundle stitcher."""
 
-import io
 import pymupdf
-import pytest
-
 from app.core.glossary import (
     RGB_AI_HIGH,
     RGB_AI_LOW,

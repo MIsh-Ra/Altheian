@@ -6,8 +6,6 @@ with university honor boards and institutional repositories.
 """
 
 from dataclasses import dataclass
-from typing import Dict, Tuple
-
 
 # ── Standardized Academic Terminology Constants ──────────────────────────────
 INTERNET_SOURCES: str = "Internet & Online Sources"
@@ -22,13 +20,13 @@ TEMPLATE_EXEMPTED: str = "Institutional Certificate Template (Exempted)"
 
 
 # ── In-Situ Annotation Color Key (PyMuPDF RGB 0.0 - 1.0) ────────────────────
-RGB_AI_LOW: Tuple[float, float, float] = (0.55, 0.85, 0.95)       # Soft cyan/teal (AI prob 0.30 - 0.50)
-RGB_AI_MEDIUM: Tuple[float, float, float] = (0.25, 0.75, 0.95)    # Medium cyan (AI prob 0.50 - 0.70)
-RGB_AI_HIGH: Tuple[float, float, float] = (0.05, 0.65, 0.95)      # Vibrant cyan (AI prob 0.70 - 1.00)
-RGB_VERBATIM: Tuple[float, float, float] = (0.90, 0.20, 0.20)     # Red for identical verbatim matches
-RGB_PARAPHRASE: Tuple[float, float, float] = (0.95, 0.45, 0.10)   # Orange for paraphrased/modified matches
-RGB_CITED: Tuple[float, float, float] = (0.10, 0.70, 0.30)        # Green for properly cited scholarship
-RGB_BOILERPLATE: Tuple[float, float, float] = (0.80, 0.80, 0.80)  # Neutral grey for institutional templates
+RGB_AI_LOW: tuple[float, float, float] = (0.55, 0.85, 0.95)       # Soft cyan/teal (AI prob 0.30 - 0.50)
+RGB_AI_MEDIUM: tuple[float, float, float] = (0.25, 0.75, 0.95)    # Medium cyan (AI prob 0.50 - 0.70)
+RGB_AI_HIGH: tuple[float, float, float] = (0.05, 0.65, 0.95)      # Vibrant cyan (AI prob 0.70 - 1.00)
+RGB_VERBATIM: tuple[float, float, float] = (0.90, 0.20, 0.20)     # Red for identical verbatim matches
+RGB_PARAPHRASE: tuple[float, float, float] = (0.95, 0.45, 0.10)   # Orange for paraphrased/modified matches
+RGB_CITED: tuple[float, float, float] = (0.10, 0.70, 0.30)        # Green for properly cited scholarship
+RGB_BOILERPLATE: tuple[float, float, float] = (0.80, 0.80, 0.80)  # Neutral grey for institutional templates
 
 
 # ── Hex Colors for ReportLab & Web UI ───────────────────────────────────────
@@ -50,7 +48,7 @@ class AcademicTermDefinition:
     guidance_for_faculty: str
 
 
-GLOSSARY: Dict[str, AcademicTermDefinition] = {
+GLOSSARY: dict[str, AcademicTermDefinition] = {
     "internet_sources": AcademicTermDefinition(
         key="internet_sources",
         display_title=INTERNET_SOURCES,

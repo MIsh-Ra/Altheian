@@ -10,12 +10,11 @@ from __future__ import annotations
 import io
 import logging
 import os
-import re
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any
 
 import pymupdf
-
 from app.core.glossary import (
     RGB_AI_HIGH,
     RGB_AI_LOW,
@@ -47,7 +46,7 @@ INSTITUTIONAL_TEMPLATES = [
 ]
 
 
-def _get_ai_graduated_color(prob: float) -> Optional[Tuple[float, float, float]]:
+def _get_ai_graduated_color(prob: float) -> tuple[float, float, float] | None:
     """Return RGB color for graduated AI highlight intensity based on probability."""
     if prob < 0.30:
         return None
@@ -58,7 +57,7 @@ def _get_ai_graduated_color(prob: float) -> Optional[Tuple[float, float, float]]
     return RGB_AI_HIGH          # Vibrant saturated cyan (0.05, 0.65, 0.95)
 
 
-def _search_text_on_page(page: pymupdf.Page, query: str) -> List[pymupdf.Rect]:
+def _search_text_on_page(page: pymupdf.Page, query: str) -> list[pymupdf.Rect]:
     """Robust multi-pass text search across page coordinates."""
     if not query or not query.strip():
         return []
@@ -72,21 +71,21 @@ def _search_text_on_page(page: pymupdf.Page, query: str) -> List[pymupdf.Rect]:
         rects = page.search_for(clean_query)
         if rects:
             return rects
-    except Exception as e:
-        logger.debug(f"Direct text search failed: {e}")
+    except (RuntimeError, ValueError) as e:
+        logger.debug("Direct text search failed: %s", e)
 
     # 2. Case-insensitive / normalized whitespace search
     try:
         rects = page.search_for(clean_query, flags=pymupdf.TEXT_DEHYPHENATE)
         if rects:
             return rects
-    except Exception:
-        pass
+    except (RuntimeError, ValueError) as e:
+        logger.debug("Dehyphenated search failed: %s", e)
 
     # 3. For longer passages (split into sliding n-grams)
     words = clean_query.split()
     if len(words) > 6:
-        matched: List[pymupdf.Rect] = []
+        matched: list[pymupdf.Rect] = []
         step = 5
         for i in range(0, len(words) - 4, step):
             subphrase = " ".join(words[i : i + 5])
@@ -94,7 +93,8 @@ def _search_text_on_page(page: pymupdf.Page, query: str) -> List[pymupdf.Rect]:
                 sub_rects = page.search_for(subphrase)
                 if sub_rects:
                     matched.extend(sub_rects)
-            except Exception:
+            except (RuntimeError, ValueError) as e:
+                logger.debug("Subphrase search failed: %s", e)
                 continue
         if matched:
             return matched
@@ -102,10 +102,10 @@ def _search_text_on_page(page: pymupdf.Page, query: str) -> List[pymupdf.Rect]:
     return []
 
 
-def _synthesize_student_pdf(report_data: Dict[str, Any]) -> pymupdf.Document:
+def _synthesize_student_pdf(report_data: dict[str, Any]) -> pymupdf.Document:
     """Generate a clean synthetic document from extracted text when original file is unavailable."""
     doc = pymupdf.open()
-    page_texts: Sequence[Dict[str, Any]] = report_data.get("page_texts") or []
+    page_texts: Sequence[dict[str, Any]] = report_data.get("page_texts") or []
 
     if page_texts:
         for pt in page_texts:
@@ -131,8 +131,8 @@ def _synthesize_student_pdf(report_data: Dict[str, Any]) -> pymupdf.Document:
 
 
 def annotate_document_pdf(
-    original_pdf_bytes_or_path: Union[str, bytes, io.BytesIO, Path, None],
-    report_data: Dict[str, Any],
+    original_pdf_bytes_or_path: str | bytes | io.BytesIO | Path | None,
+    report_data: dict[str, Any],
 ) -> bytes:
     """Open original submitted PDF, annotate with in-situ Turnitin-style highlights, and return bytes.
 
@@ -142,7 +142,7 @@ def annotate_document_pdf(
       c) Excluded Citations: Green underline annotations for properly cited scholarship.
       d) Institutional Boilerplate: Grey highlight with 'Template Exempted' note.
     """
-    doc: Optional[pymupdf.Document] = None
+    doc: pymupdf.Document | None = None
 
     # Step 1: Open or synthesize document
     if isinstance(original_pdf_bytes_or_path, (str, Path)):
@@ -150,7 +150,7 @@ def annotate_document_pdf(
         if os.path.exists(path_str):
             try:
                 doc = pymupdf.open(path_str)
-            except Exception as e:
+            except (pymupdf.FileDataError, RuntimeError, OSError, ValueError) as e:
                 logger.warning(f"Could not open PDF file {path_str}: {e}")
 
     elif isinstance(original_pdf_bytes_or_path, (bytes, io.BytesIO)):
@@ -162,7 +162,7 @@ def annotate_document_pdf(
         if stream_bytes:
             try:
                 doc = pymupdf.open(stream=stream_bytes, filetype="pdf")
-            except Exception as e:
+            except (pymupdf.FileDataError, RuntimeError, OSError, ValueError) as e:
                 logger.warning(f"Could not open PDF from stream: {e}")
 
     if doc is None or len(doc) == 0:
@@ -292,8 +292,8 @@ def annotate_document_pdf(
                     color=color,
                     fontname="helv",
                 )
-            except Exception as e:
-                logger.debug(f"Could not add badge annotation: {e}")
+            except (RuntimeError, ValueError, OSError) as e:
+                logger.debug("Could not add badge annotation: %s", e)
 
     output_bytes = doc.tobytes(deflate=True, garbage=3)
     doc.close()
