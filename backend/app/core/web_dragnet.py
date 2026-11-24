@@ -47,16 +47,26 @@ class SerperClient:
         self.primary_key = (
             api_key
             or os.getenv("SERPER_API_KEY")
-            or getattr(settings, "SERPER_API_KEY", "")
             or redis_key
+            or getattr(settings, "SERPER_API_KEY", "")
             or ""
         )
-        self.backup_key = (
+        raw_backup = (
             backup_api_key
+            or os.getenv("SERPER_BACKUP_KEYS")
             or os.getenv("SERPER_BACKUP_KEY")
+            or getattr(settings, "SERPER_BACKUP_KEYS", "")
             or getattr(settings, "SERPER_BACKUP_KEY", "")
             or ""
         )
+        if isinstance(raw_backup, str):
+            self.backup_keys = [k.strip() for k in raw_backup.split(",") if k.strip()]
+        elif isinstance(raw_backup, (list, tuple)):
+            self.backup_keys = [k.strip() for k in raw_backup if isinstance(k, str) and k.strip()]
+        else:
+            self.backup_keys = []
+
+        self.backup_key = self.backup_keys[0] if self.backup_keys else ""
         self.api_key = self.primary_key  # default active
 
         search_url = os.getenv("SEARCH_ENGINE_URL", "")
@@ -122,10 +132,14 @@ class SerperClient:
         if self.primary_key:
             results = self._call_serper(query, num_results, self.primary_key)
 
-        # Tier 2: Try Backup Key if Primary failed or was depleted
-        if not results and self.backup_key and self.backup_key != self.primary_key:
-            logger.info("Failing over to backup Serper API key...")
-            results = self._call_serper(query, num_results, self.backup_key)
+        # Tier 2: Try Backup Keys in order if Primary failed or was depleted
+        if not results and self.backup_keys:
+            for idx, b_key in enumerate(self.backup_keys, 1):
+                if b_key and b_key != self.primary_key:
+                    logger.info(f"Failing over to backup Serper API key #{idx}...")
+                    results = self._call_serper(query, num_results, b_key)
+                    if results:
+                        break
 
         # Tier 3: DuckDuckGo fallback
         if not results:

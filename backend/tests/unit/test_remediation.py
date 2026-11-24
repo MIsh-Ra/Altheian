@@ -194,3 +194,40 @@ class TestWebDragnetSerpApiSupport:
                 client_from_redis = SerperClient()
                 assert client_from_redis.api_key == "redis_serpapi_key"
                 assert getattr(client_from_redis, "engine_type", None) == "serpapi"
+
+    def test_serper_multiple_backup_keys_failover(self):
+        """
+        Verify that SerperClient resolves multiple backup keys and fails over in sequence.
+        """
+        mock_redis = MagicMock()
+        mock_redis.get.return_value = None
+
+        with patch("redis.Redis", return_value=mock_redis):
+            with patch.dict(
+                "os.environ",
+                {
+                    "SERPER_API_KEY": "primary_key",
+                    "SERPER_BACKUP_KEY": "backup_key_1,backup_key_2",
+                },
+            ):
+                client = SerperClient()
+                assert client.primary_key == "primary_key"
+                assert client.backup_keys == ["backup_key_1", "backup_key_2"]
+                assert client.backup_key == "backup_key_1"
+
+                # Simulate primary fails, backup_key_1 fails, backup_key_2 succeeds
+                calls = []
+
+                def mock_call(query, num_results, key):
+                    calls.append(key)
+                    if key == "backup_key_2":
+                        return [{"url": "https://example.com", "title": "Example", "snippet": "Test"}]
+                    return None
+
+                client._call_serper = mock_call
+                client.bypass_cache = True
+                res = client.search("test query", num_results=1)
+
+                assert len(res) == 1
+                assert calls == ["primary_key", "backup_key_1", "backup_key_2"]
+

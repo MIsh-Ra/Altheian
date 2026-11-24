@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     
     SERPER_API_KEY: str = ""
     SERPER_BACKUP_KEY: str = ""
+    SERPER_BACKUP_KEYS: str = ""
     DRAGNET_BYPASS_CACHE: bool = False
     ENABLE_INGESTION_CACHE: bool = False
     REDIS_HOST: str = "localhost"
