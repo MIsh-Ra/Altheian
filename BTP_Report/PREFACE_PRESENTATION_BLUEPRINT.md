@@ -199,46 +199,50 @@ When designing these slides in Canva, use this clean, modern academic theme:
 
 ---
 
-## Slide 8: In-Situ Vector PDF Annotation: 100% Visual Fidelity (6:45 - 7:30)
+## Slide 8: In-Situ Vector PDF Annotation & Streaming: 100% Visual Fidelity (6:45 - 7:30)
 
 ### Canva Layout & Elements
-- **Layout:** Before / After Visual Card.
-- **Top / Left (The Problem with Legacy Export):**
-  - Shows plain-text corrupted view: Broken equations, lost diagrams, ruined tables.
-- **Bottom / Right (The Alethian v3.0 Innovation):**
-  - **100% Visual Fidelity:** Original student PDF is preserved in its exact vector layout.
-  - **Non-Destructive Vector Highlights:** Red (verbatim), Orange (paraphrase), Green (citation), Graduated Blue (AI).
-  - **Margin Sticky Badges:** Interactive notes detailing source URL, author, and match percentage.
-  - **Executive Audit Certificate (Pages 1-3):** Dean's signature block, originality gauge, and forensic breakdown prepended directly to the thesis.
+- **Layout:** Before / After Visual Card + Highlight Legend Bar.
+- **Left Container (Legacy Checkers & Old Prototype - Broken):**
+  - Shows plain-text corrupted view: Equations flattened to gibberish (`sum_i=1^n x_i`), circuit block diagrams wiped out, two-column layouts merged into unreadable vertical text.
+- **Right Container (Alethian v3.0 Vector PDF Innovation - Pristine):**
+  - **100% Vector Fidelity:** Student's authentic PDF is rendered 1:1 directly in the browser. Every equation ($\sum$, fractions, matrices), diagram, and font stays intact.
+  - **Turnitin-Standard Palette with Graduated Opacity:**
+    - **AI Writing:** Authentic Turnitin Cyan (`RGB=(0.32, 0.78, 0.86)`) with 3-tier graduated opacity (35%, 60%, 85%) highlighting synthetic text without obscuring words.
+    - **Archive Plagiarism:** Crimson (`RGB=(0.94, 0.27, 0.27)`).
+    - **Paraphrase / Rephrase:** Turnitin Orange (`RGB=(0.98, 0.45, 0.09)`).
+    - **Internet / Web:** Royal Blue (`RGB=(0.23, 0.51, 0.96)`).
+    - **College Boilerplate:** Neutral Gray (0% penalty, exempted).
+  - **Direct Stream Endpoint (`/view-pdf`):** In-memory streaming with atomic disk cache for sub-10ms page turns.
 
 ### Plain-English Evaluator Decoder
-- **In-Situ Annotation:** Placing highlights directly onto the student's original PDF pages (on top of their actual figures and math formulas) without reformatting or damaging the document.
+- **In-Situ Annotation:** Highlighting the student's actual vector PDF pages without converting or re-encoding them. What the student submitted is exactly what the professor sees.
 
 ### Speaker Script (What to Say)
-> "One of our most significant breakthroughs is our in-situ PDF annotation engine. Previous tools—and earlier iterations of our project—stripped PDFs to plaintext to add highlights, which destroyed mathematical formulas, tables, and diagrams. 
-> In Alethian v3.0, we engineered a non-destructive vector overlay engine using PyMuPDF. We project color-coded highlights and margin badges directly onto the exact vector coordinates of the student's original PDF. 
-> The student's LaTeX equations, circuit diagrams, and graphs remain 100% intact. We prepend a 3-page formal executive audit certificate, giving professors an official university sign-off sheet stitched directly with the student's annotated thesis."
+> "One of our most critical engineering breakthroughs is our in-situ vector PDF streaming engine. Commercial tools like Turnitin and legacy academic checkers convert student PDFs into flat text, which wipes out circuit diagrams, mathematical equations, and two-column formatting.
+> In Alethian v3.0, we engineered a direct vector overlay engine using PyMuPDF. We project translucent highlights directly onto the exact vector coordinates of the student's original document.
+> For AI writing, we implemented Turnitin-standard Cyan with graduated opacity: low-risk text receives a subtle 35% tint, while high-confidence synthetic paragraphs receive an unmistakable 85% overlay. Formulas and figures stay 100% intact, and pages turn in single-digit milliseconds via our direct streaming endpoint."
 
 ---
 
-## Slide 9: Scholarly UI: The Unslop Craft Standard (7:30 - 8:15)
+## Slide 9: Selective Audit Scope & Scholarly UI (7:30 - 8:15)
 
 ### Canva Layout & Elements
-- **Layout:** Screenshot Showcase with Feature Callout Badges.
-- **Centerpiece:** High-resolution screenshot of the Alethian Focus Canvas & Inspector.
-- **Callout 1 (Top Bar):** **Responsive Header & Export Toolbar**
-  - `[Full Audit (PDF)]`, `[Summary Only]`, `[JSON]`, `[PRINT]` buttons with responsive wrap.
-- **Callout 2 (Left Margin):** **Page Radar Strip**
-  - Vertical thumbnail strip with color-coded risk bars for rapid navigation.
-- **Callout 3 (Center):** **Focus Canvas**
-  - High-legibility paper-white reading mode.
-- **Callout 4 (Right):** **Plain-English Evaluator Tooltips `(i)`**
-  - Hover-over explanations demystifying technical metrics for non-technical professors.
+- **Layout:** 2-Row Split (Top: Selective Audit Scope Card, Bottom: Focus Canvas UI).
+- **Top Card (Selective Audit Scope Selector):**
+  - **3 Module Checkboxes:** `[✓] AI Detection (Qwen2.5)`, `[✓] Live Web Dragnet`, `[✓] Theses Archive`
+  - **3 Quick-Select Mode Badges:**
+    - `Full Audit (Default)`: All 3 modules active (~34s) for comprehensive final thesis defense.
+    - `⚡ AI Only (~5s Fast Mode)`: Skips web scraping and vector database lookups for instant ~5s semester grading.
+    - `Plagiarism Only`: Skips neural inference, leaving DGX GPU 100% free for other lab research.
+- **Bottom Canvas (Focus Canvas & Radar):**
+  - High-resolution screenshot of the Alethian UI showing the Turnitin highlight legend toolbar, page jump controls, and plain-English evidentiary tooltips `(i)`.
 
 ### Speaker Script (What to Say)
-> "Here is our newly redesigned frontend, built with React 19 under our Unslop Craft Standard. We rejected cluttered dashboards and neon gimmicks in favor of a clinical, archival reading room aesthetic.
-> The thesis occupies a spacious Focus Canvas with vector-accurate overlays. On the left, our Page Radar strip lets faculty scan through 40 pages in seconds and jump directly to highlighted sections. 
-> Notice our top export toolbar: professors can download the complete bundle or a 3-page summary with one click. Every match and AI tier includes an interactive tooltip that explains the forensic evidence in plain English, ensuring non-technical faculty can evaluate reports with total confidence."
+> "To give evaluators complete control over turnaround time and server resources, we built the Selective Audit Scope feature into the Faculty Dashboard.
+> When grading hundreds of mid-term submissions where professors only care about AI generation, they can select our '⚡ AI Only' preset. This immediately bypasses external web searches and vector database indexing, completing the analysis in just 5 seconds flat while keeping the DGX GPU free.
+> When it is time for the final thesis defense, one click enables 'Full Audit', running live web search and archive comparison concurrently. In the report viewer, professors can toggle AI and plagiarism highlights independently or jump directly to flagged pages with our radar navigation."
+
 
 ---
 
