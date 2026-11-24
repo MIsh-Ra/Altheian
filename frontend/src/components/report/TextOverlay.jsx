@@ -234,6 +234,7 @@ export default function TextOverlay({
 
     const pageRefs = useRef({});
     const containerRef = useRef(null);
+    const isNavigatingRef = useRef(false);
 
     // Active AI windows from props or store
     const effectiveAiWindows = aiWindows && aiWindows.length > 0 
@@ -258,7 +259,12 @@ export default function TextOverlay({
         if (!currentPage) return;
         const el = pageRefs.current[currentPage];
         if (el) {
+            isNavigatingRef.current = true;
             el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            const timer = setTimeout(() => {
+                isNavigatingRef.current = false;
+            }, 800);
+            return () => clearTimeout(timer);
         }
     }, [currentPage]);
 
@@ -266,6 +272,7 @@ export default function TextOverlay({
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
+                if (isNavigatingRef.current) return;
                 let topEntry = null;
                 for (const entry of entries) {
                     if (entry.isIntersecting) {
@@ -331,7 +338,7 @@ export default function TextOverlay({
     return (
         <div ref={containerRef} className="h-full overflow-y-auto relative bg-neutral-100 dark:bg-neutral-900/60 select-text">
             {/* Pinned Professional Turnitin-Style Legend Bar */}
-            <div className="sticky top-0 z-20 bg-surface-container-low/95 backdrop-blur-md border-b border-ghost px-4 py-2 flex flex-wrap items-center justify-between gap-2.5 text-xs select-none">
+            <div className="sticky top-0 z-20 bg-surface-container border-b border-ghost px-4 py-2 flex flex-wrap items-center justify-between gap-2.5 text-xs select-none shadow-xs">
                 <div className="flex items-center flex-wrap gap-4">
                     {/* Plagiarism Toggle & Sub-Keys */}
                     <div className="flex items-center space-x-2">
