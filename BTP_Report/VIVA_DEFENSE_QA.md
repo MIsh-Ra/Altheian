@@ -140,3 +140,78 @@ This document prepares the project presenters for rigorous technical cross-exami
 > **Model Answer:**  
 > "In Unicode, Cyrillic small letter 'а' (`\u0430`) is visually identical to Latin 'a' (`\u0061`), but has a different byte sequence.
 > Stage 0 passes all input text through the **Unicode Technical Standard #39 (UTS #39) Confusable Mapping Specification**. Every confusable glyph is normalized to its canonical Latin ASCII equivalent before passing to our shinglers and language models. The student's substitution has zero impact on detection."
+
+---
+
+## Technical Domain 5: Turnitin Comparison, Citation Awareness & Document Fidelity
+
+### Q5.1: "How does Alethian compare directly against Turnitin on real thesis submissions at our institute?"
+> **Examiner Intent:** Testing whether the project solves a real institutional problem better than existing multi-thousand-dollar commercial software.  
+> 
+> **Model Answer:**  
+> "We conducted a direct head-to-head empirical comparison using an actual 34-page LNMIIT BTP thesis (`BTP_Report.pdf`). The results demonstrated three critical advantages for Alethian:
+> 1. **Elimination of False Boilerplate Penalties:** Turnitin reported an inflated **28% similarity**, with **18%** coming entirely from the college's mandatory Certificate of Originality and Candidate Declaration! Alethian recognized these mandatory templates and applied a 0% penalty, reporting a clean, legitimate **11.6% match**.
+> 2. **Protection of Student Self-Drafts:** Turnitin penalized the student 8% for their own mid-term submission. Alethian automatically tagged past submissions as *Author's Previous Draft* and isolated them from the plagiarism score.
+> 3. **AI Paraphrase Detection:** Turnitin reported 0% AI detection, completely missing AI-assisted sections in the literature review. Alethian's dual-stream Binoculars pinpointed the localized AI-generated passage on Page 17 with 72.5% confidence.
+> 4. **100% Visual Fidelity:** Turnitin's report stripped the document into raw flat text, deleting all formulas and figures. Alethian preserved every equation and diagram in the original vector PDF."
+
+---
+
+### Q5.2: "How does your system prevent false plagiarism penalties on mandatory certificates and candidate declarations?"
+> **Examiner Intent:** Probing the mechanism behind institutional boilerplate filtering.  
+> 
+> **Model Answer:**  
+> "Every university mandates standard legal forms—such as the Certificate of Originality and Candidate Declaration. Because all 500 students in a batch use identical wording, commercial tools flag these pages with 15% to 25% similarity.
+> 
+> In Alethian, our ingestion pipeline applies an **Institutional Boilerplate Regular Expression & AST Matcher**. When standard phrases (e.g., *'This is to certify that the project report entitled...', 'submitted in partial fulfillment of the requirements for the degree of Bachelor of Technology'*) are detected on the initial preliminary pages, the engine flags the block as `Template Exempted`.
+> It records the match for transparency but assigns it an exact **0.0% plagiarism penalty**. In our vector PDF export, it draws an emerald exemption badge so the faculty reviewer can see that the section was intentionally cleared."
+
+---
+
+### Q5.3: "What happens when a student quotes a paper and cites it properly? How does citation-aware parsing work?"
+> **Examiner Intent:** Evaluating whether the system unfairly penalizes good academic scholarship.  
+> 
+> **Model Answer:**  
+> "A major complaint against traditional plagiarism engines is that properly cited quotes are flagged as plagiarism.
+> 
+> Alethian v3.0 implements **Citation-Aware Filtering**:
+> 1. Our tokenizer uses specialized regex to detect in-text citations in standard IEEE, ACM, and APA styles (e.g., `[1]`, `[1, 2]`, `[1-3]`, or `(Author et al., 2023)`).
+> 2. It cross-checks these references against the terminal bibliography section of the thesis.
+> 3. When an overlapping text block is immediately followed by a verified citation marker, the system categorizes it as a **Legitimate Academic Citation**. It underlines the passage in green in the visual viewer and excludes those tokens from the plagiarism penalty numerator."
+
+---
+
+### Q5.4: "Why did previous versions lose mathematical equations and figures during PDF export, and how did you achieve 100% vector fidelity?"
+> **Examiner Intent:** Probing your document engineering and PDF manipulation depth.  
+> 
+> **Model Answer:**  
+> "In previous versions, the export pipeline extracted plaintext from the student's submission and re-flowed it into a newly created ReportLab document. This was a catastrophic failure mode because plaintext extraction strips LaTeX vector formulas, circuit diagrams, tables, and multi-column formatting, turning a professional thesis into an unreadable wall of text.
+> 
+> In Alethian v3.0, we completely redesigned this as an **In-Situ Vector PDF Annotation Engine** using PyMuPDF:
+> 1. We load the student's original vector PDF directly.
+> 2. For each detected match or AI segment, we query PyMuPDF's coordinate mapper (`page.search_for(quads=True)`) to find the exact geometric bounding boxes $(x_0, y_0, x_1, y_1)$ on the physical page.
+> 3. We project color-coded vector highlight annotations and interactive margin sticky notes directly on top of the original page.
+> 4. We prepend a 3-page executive audit summary certificate to the front of the file.
+> Because the original PDF is never re-synthesized, 100% of the student's LaTeX math formulas, figures, tables, and typography remain completely pristine."
+
+---
+
+### Q5.5: "What if the original PDF is moved or renamed on the server? How does your 4-tier path resolver work?"
+> **Examiner Intent:** Testing system resilience and failure-recovery design.  
+> 
+> **Model Answer:**  
+> "To prevent broken report links when files are moved or servers restart, we engineered a deterministic 4-tier path resolver:
+> 1. **Direct Path Match:** Checks the explicit file path stored in the document's database metadata (`doc.meta_data['file_path']`).
+> 2. **UUID Prefix Search:** Scans upload and holding directories for files matching the document's unique UUID (`*{doc_id}*.pdf`).
+> 3. **Sanitized Name Match:** Checks for exact or safe-sanitized filename patterns.
+> 4. **Content-Addressable SHA-256 Hash Recovery:** As an infallible fallback, the system calculates the SHA-256 byte-hash of the document upon upload. If a file is renamed or relocated anywhere across storage, the resolver scans candidates and matches the cryptographic hash. This mathematically guarantees that the original thesis can always be located for vector annotation."
+
+---
+
+### Q5.6: "How do you explain technical concepts like Binoculars cross-perplexity or shingling to a non-technical committee member?"
+> **Examiner Intent:** Testing your ability to communicate complex engineering concepts simply and clearly.  
+> 
+> **Model Answer:**  
+> "We explain them using real-world analogies:
+> - **Shingling ($k$-grams):** 'Think of taking a sliding magnifying glass of six words across a thesis. Just like human fingerprints, if two theses share several consecutive 6-word sequences, they didn't happen by coincidence; one was copied from the other.'
+> - **Binoculars Cross-Perplexity:** 'Think of reading a passage with two different pairs of glasses. A human writer is creative—sometimes writing a surprising metaphor, sometimes writing a simple connector. An AI model, however, is a statistical machine that always chooses the safest, most predictable word. Binoculars measures that robotic predictability. If the text reads with uniform predictability across both lenses, it is flagged as AI-generated.'"

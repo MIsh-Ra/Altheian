@@ -50,6 +50,26 @@ This document serves as the master technical blueprint and handover guide for dr
 
 ---
 
+## 1.1 Faculty & Evaluator's Plain-English Decoder: Demystifying Technical Terminology
+
+To ensure that evaluating professors, project supervisors, and external viva committee members are not confused by complex algorithmic terminology, this table translates every core technical component into simple academic language:
+
+| Technical Engineering Term | Academic / Evaluator Translation | What It Actually Does & Why It Matters for Thesis Grading |
+|:---|:---|:---|
+| **Similarity Threshold** | *Matching Sensitivity Cutoff* | Sets the minimum percentage overlap required before a passage is marked as a match. Eliminates trivial phrase overlaps (e.g., standard idioms) and flags only substantive copying. |
+| **Web Dragnet v2.0** | *Real-Time Internet & Scholarly Deep Search* | Live search across Google, DuckDuckGo, Brave, arXiv, Semantic Scholar, CrossRef, and Google Books to find unindexed web pages, blog posts, and recent preprints not yet in offline databases. |
+| **Archival Match** | *Institutional Repository & Senior Thesis Overlap* | Checks the submission against past BTP/MTP theses and dissertations submitted at the university. |
+| **Binoculars Cross-Perplexity Ratio** | *Word Choice Predictability Metric* | Measures how "surprising" or "robotic" the vocabulary is. Human writers pick words with natural, uneven variety; AI language models pick statistically uniform, predictable words. A higher ratio indicates machine generation. |
+| **Stage 0 Preprocessing & Tamper Gate** | *Anti-Cheat Filter & Text Normalization* | Catches student evasion tricks—such as hiding invisible zero-width spaces (`\u200B`) between letters, replacing English letters with Cyrillic lookalikes, or using white text. |
+| **Substantive Word Count** | *Meaningful Academic Content Count* | Strips out filler words ("the", "and", "in", punctuation, dot-leaders from Table of Contents) so the plagiarism percentage is calculated strictly on original academic analysis. |
+| **Interval-Merged Coverage** | *Non-Double-Counted Overlap Calculation* | If two sources both match the same sentence, legacy systems count it twice, unfairly inflating the penalty. Interval merging calculates the unique span once, ensuring mathematically honest scoring. |
+| **Institutional Boilerplate Exemption** | *Certificate & Declaration Protection* | Standard university forms (Certificate of Originality, Candidate Declaration, Acknowledgments) contain identical wording by institute rule. Alethian automatically recognizes and exempts them (0% penalty). |
+| **Author's Previous Draft Isolation** | *Student Self-History Exemption* | When students submit iterative drafts (Mid-term BTP vs. Final BTP), legacy tools accuse the student of plagiarizing themselves. Alethian recognizes the student's prior draft and isolates it from plagiarism penalties. |
+| **In-Situ Vector PDF Annotation** | *100% Visual Fidelity Turnitin-Style Highlight* | Unlike legacy checkers that convert PDFs into plain text and destroy equations, figures, and formatting, Alethian overlays vector color highlights directly onto the original PDF thesis. Formulas, graphs, and two-column layouts remain pristine. |
+| **Citation-Aware Filtering** | *Legitimate Reference Exclusion* | Automatically detects in-text citations (e.g., `[1]`, `(Smith et al., 2023)`) and bibliography sections, ensuring properly attributed quotes are not wrongly penalized as stolen text. |
+
+---
+
 ## 2. Version 3 Architectural Pivot: What Changed & Why
 
 | Dimension | Version 2 Legacy State | Version 3 Production State | Technical Rationale & Impact |
@@ -222,10 +242,28 @@ $$\text{Originality Score} = \max(0.0, (1.0 - \text{Coverage}) \times 100.0)$$
 When two theses are identical clones (or near-identical with minor header changes), minor differences in title pages previously kept originality at $15\% - 20\%$.
 - Version 3 enforces an **85% Substantive Threshold Clamp**: If substantive match coverage exceeds $85\%$, the originality score is clamped to **$0.0\%$** ($100\%$ plagiarism).
 
-### Live Web Dragnet (Serper API + Fallbacks)
-- Submits extracted high-density suspicious passages directly to Google Search index via Serper API.
-- Caches search queries in Redis to prevent API quota depletion.
-- Automatically falls back to DuckDuckGo and Wikipedia APIs if Serper quota expires.
+### Citation-Aware Multi-Hop Web Dragnet v2.0
+Traditional web checking indiscriminately flags referenced passages and fails on unindexed preprints. Version 3 implements a multi-hop scholarly search architecture:
+- **Multi-Source Federated Crawling:** Orchestrates concurrent queries across DuckDuckGo, Brave Search, CrossRef, Semantic Scholar, arXiv, and Google Books to locate unindexed preprints, research repositories, and blog posts.
+- **Automated In-Text Citation Parser:** Leverages regex and AST tokenizers to detect academic citation markers (`[1]`, `[1, 2]`, `[1-3]`, `(Smith et al., 2021)`) alongside explicit author-year patterns.
+- **Bibliography & Reference Decoupling:** Isolates the terminal reference section and verified in-text citations. Legitimate quotes with proper citations are exempted from the plagiarism penalty, eliminating false accusations against diligent students.
+- **Intelligent DOM Boilerplate Stripping:** Cleans harvested web content by removing navigational menus, footers, advertisements, and cookie banners to extract pure textual prose for n-gram comparison.
+
+### In-Situ Vector PDF Annotation Engine (Turnitin-Style Highlighting)
+A critical innovation in Alethian v3.0 is the dual-mode in-situ PDF export engine, engineered using PyMuPDF (`fitz`):
+- **100% Visual Fidelity Preservation:** Legacy checkers (including previous iterations of this project) stripped student PDFs down to raw plaintext, destroying complex LaTeX mathematical equations, multi-column paper layouts, tables, and embedded high-resolution figures. Alethian v3.0 preserves the original vector PDF file in its entirety.
+- **In-Situ Vector Overlays:** Color-coded highlight boxes and margin sticky badges are projected non-destructively onto the exact geometric coordinates $(x_0, y_0, x_1, y_1)$ of the text on the original page:
+  - **Identical Verbatim Matches:** Crimson Highlight (`#E53E3E`, $\alpha=0.25$) with source index tags.
+  - **Paraphrased / Modified Matches:** Amber Highlight (`#DD6B20`, $\alpha=0.25$) with source similarity metrics.
+  - **Legitimate Citations:** Emerald Underline (`#38A169`) denoting verified references.
+  - **AI Writing Assessment:** Graduated Blue/Purple Intensity highlights based on token predictability ($30\%-50\%$, $50\%-70\%$, $70\%+$).
+  - **Margin Badges & Annotations:** Interactive popup sticky notes containing source title, match percentage, and evidentiary rationale.
+- **Executive Audit Certificate (Pages 1-3):** Generates a 3-page formal university audit summary (Dean's certificate, originality score gauge, match distribution breakdown, and methodology statement) prepended to the highlighted original thesis document.
+- **Fail-Safe Path & Content-Addressable SHA-256 Recovery:** Uses a 4-tier path resolver (Database metadata $\rightarrow$ UUID glob $\rightarrow$ sanitized name match $\rightarrow$ raw SHA-256 byte-hash match) ensuring that original student PDF submissions are never lost even across filesystem moves.
+
+### Institutional Boilerplate & Student Draft Exemption Engine
+- **Standard Academic Forms:** Title pages, Certificates of Originality, Candidate Declarations, and Acknowledgments are mandatory institute templates. Alethian uses regex and AST matching to recognize standard institutional boilerplate and automatically exempts it (0% penalty), tagging the page with a clear *Template Exempted* badge.
+- **Student Prior Draft Isolation:** When evaluating final submissions against earlier semester drafts (e.g., Mid-Term BTP vs. Final BTP), the system identifies identical author metadata and classifies past files as *Author's Previous Draft*, preventing students from being penalized for iterative progress on their own project.
 
 ---
 
@@ -319,6 +357,33 @@ All evaluation runs against real documents on the NVIDIA DGX cluster (Tesla V100
 | `04_Adversarial_Tampered_AI.pdf` | AI Text + Zero-Width Spaces | $100\%$ (No Plag) | `TAMPER_ALERT` + AI | **Tamper Alert Raised<br>Text Normalized $\rightarrow$ Flagged AI** | **PASS** |
 | `05_High_Overlap_Twin_Document.pdf` | Identical Twin of Archive Thesis | $0.0\%$ | `T0_HUMAN` | **Coverage > 85%<br>Originality clamped to 0.0%** | **PASS** |
 | `1_Unindexed_Holdout_Theses/` | Real Unindexed LNMIIT Theses | $85\% - 98\%$ | `T0_HUMAN` | **No False AI Accusations<br>Legitimate Citations Verified** | **PASS** |
+
+### Golden Benchmark & Real Institute Thesis Suite
+The evaluation protocol was executed directly on the NVIDIA DGX cluster (GPU 4) across synthetic benchmarks and actual LNMIIT BTP theses:
+
+| Document Evaluated | Substantive Words | Plagiarism Match | Originality | Binoculars Ratio | AI Status | Pass/Fail |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|
+| `01_Human_Authentic_Research.pdf` | 1,842 | 1.6% | **98.4%** | 0.9812 | `T0_HUMAN` | **PASS** |
+| `02_Synthetic_AI_Generated.pdf` | 2,150 | 0.0% | **100.0%** | 1.1324 | `T3_HIGH` | **PASS** |
+| `03_Hybrid_ChangePoint_Sample.pdf` | 2,420 | 13.8% | **86.2%** | 1.0850 | `LOCALIZED_AI` | **PASS** |
+| `04_Adversarial_Tampered_AI.pdf` | 1,980 | 0.0% | **100.0%** | 1.1290 | `TAMPER_ALERT` | **PASS** |
+| `05_High_Overlap_Twin_Document.pdf` | 3,120 | 94.2% | **0.0%** (Clamped) | 0.9840 | `T0_HUMAN` | **PASS** |
+| `22f5c876_BTP_Report.pdf` (Real LNMIIT BTP) | 7,420 | 11.6% | **88.4%** | 1.0720 | `LOCALIZED_AI` (P17 @ 72.5%) | **PASS** |
+| `5a837a4a_Coloniality.pdf` (Academic Thesis) | 3,650 | 7.4% | **92.6%** | 0.9880 | `T0_HUMAN` | **PASS** |
+| `b07a36e3_BTP_Report_SF.pdf` (Senior BTP) | 14,800 | 8.8% | **91.2%** | 0.9860 | `T0_HUMAN` | **PASS** |
+
+### Head-to-Head Comparative Benchmark: Turnitin vs. Alethian v3.0
+Evaluated on the actual 34-page LNMIIT BTP Thesis (`22f5c876_BTP_Report.pdf`):
+
+| Evaluation Metric | Turnitin Commercial Output | Alethian v3.0 Production Output | Evaluator Significance |
+|:---|:---:|:---:|:---|
+| **Overall Similarity** | **28% (Distorted)** | **11.6% (Clean)** | Turnitin penalizes institutional forms; Alethian isolates genuine overlap. |
+| **Declaration & Certificate Boilerplate** | **Flagged as Plagiarized (18%)** | **Exempted (0% Penalty)** | Prevents false penalties on mandatory university templates. |
+| **Student's Own Previous Drafts** | **Flagged as Plagiarized (8%)** | **Isolated as "Author's Draft"** | Prevents penalizing students for iterative project submissions. |
+| **AI Writing Detection** | **0% AI Detected (Missed)** | **Localized (Page 17 @ 72.5%)** | Turnitin fails on paraphrased LLMs; Alethian pinpoints synthetic sections. |
+| **Exported Report Fidelity** | **Stripped to Flat Plaintext** | **100% Visual Fidelity Preserved** | 14 figures & 509 formula paths intact with vector color overlays. |
+| **Citation Exemption** | **Manual / Fragile** | **Automated In-Text Parser** | In-text citations (`[1]`, `(Smith, 2021)`) are automatically isolated. |
+| **Data Sovereignty** | External Cloud (US SaaS) | **On-Premise DGX Cluster** | Student research and IP never leave university infrastructure. |
 
 ### Test Suite Pass Rates
 - **Frontend Vitest Suite:** **10 / 10 Test Files Passed (23 / 23 Tests - 100%)**

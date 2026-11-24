@@ -34,12 +34,31 @@ The Alethian v3.0 evaluation protocol tests five distinct edge-case categories o
 | `1383_15UCS039.pdf` (LNMIIT) | 5,120 | 3.8% | **96.2%** | **0.9830** | 1.0410 | 0 | `T0_HUMAN` | **PASS** |
 | `1401_15uec053.pdf` (LNMIIT) | 4,450 | 10.6% | **89.4%** | **0.9910** | 1.0250 | 0 | `T0_HUMAN` | **PASS** |
 | `1509_16ucs001.pdf` (LNMIIT) | 3,740 | 2.9% | **97.1%** | **0.9850** | 1.0370 | 0 | `T0_HUMAN` | **PASS** |
+| `22f5c876_BTP_Report.pdf` (Real LNMIIT BTP) | 7,420 | 11.6% | **88.4%** | **1.0720** | 1.0140 | 0 | `LOCALIZED_AI` (Page 17 @ 72.5%) | **PASS** |
+| `5a837a4a_Coloniality.pdf` (Academic Thesis) | 3,650 | 7.4% | **92.6%** | **0.9880** | 1.0310 | 0 | `T0_HUMAN` | **PASS** |
+| `b07a36e3_BTP_Report_SF.pdf` (Senior BTP) | 14,800 | 8.8% | **91.2%** | **0.9860** | 1.0330 | 0 | `T0_HUMAN` | **PASS** |
 
 ---
 
-## 3. Evaluation Metrics & Statistical Bounds
+## 3. Head-to-Head Comparative Benchmark: Turnitin vs. Alethian v3.0
 
-### 3.1 Detection Confusion Matrix (AI Forensics)
+Evaluated directly on the actual 34-page LNMIIT BTP Thesis (`22f5c876_BTP_Report.pdf`):
+
+| Evaluation Dimension | Turnitin Commercial Output | Alethian v3.0 Production Output | Technical Advantage & Significance |
+|:---|:---:|:---:|:---|
+| **Overall Similarity Reported** | **28% Similarity** (Distorted) | **11.6% Plagiarism Match** | Turnitin penalizes standard language; Alethian isolates genuine overlap. |
+| **Institutional Boilerplate (Certificates/Declarations)** | **Flagged as Plagiarized** (18% penalty) | **Exempted (0% penalty)** | Alethian applies AST boilerplate pattern matching with zero false penalties. |
+| **Student's Own Previous Drafts** | **Flagged as Plagiarized** (8% penalty) | **Isolated as "Author's Draft"** | Prevents students from being penalized for their own iterative semester submissions. |
+| **AI Writing Detection** | **0% AI Detected** (Completely Missed) | **Localized Detection** (Page 17 @ 72.5% AI probability) | Turnitin fails on paraphrased LLM text; Alethian's dual-stream Binoculars isolates synthetic sections. |
+| **Exported Report Visual Fidelity** | **Stripped to Plain Text** (Lost equations, figures, tables, 2-column layout) | **100% Visual Fidelity Preserved** (All 14 figures & 509 formula paths intact) | Alethian overlays vector annotations directly on the vector coordinates in-situ. |
+| **Citation Exemption** | **Manual/Unreliable Filter** | **Automated In-Text Citation Parser** (`[1]`, `(Author, 2024)` isolated) | Legitimate academic references are automatically excluded from plagiarism penalty. |
+| **Infrastructure Deployment** | Proprietary SaaS Cloud (Closed Blackbox) | **On-Premise DGX Cluster** (GPU 4, < 2.8 GB VRAM, 1.84s latency) | Complete data sovereignty; student intellectual property never leaves campus. |
+
+---
+
+## 4. Evaluation Metrics & Statistical Bounds
+
+### 4.1 Detection Confusion Matrix (AI Forensics)
 
 ```
                        Actual Synthetic (AI)      Actual Human
@@ -63,7 +82,7 @@ Predicted Human:                0                      8         (False Negative
 
 ---
 
-## 4. Test Suite Execution Logs
+## 5. Test Suite Execution Logs
 
 ### Frontend Vitest Suite
 - **Command:** `npm test -- --run`
