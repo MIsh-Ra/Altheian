@@ -3,18 +3,27 @@ import { createContext, useContext, useEffect, useState } from 'react';
 const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(
-    () => localStorage.getItem('alethian_theme') || 'dark' // Default True Dark
-  );
+  const [theme, setTheme] = useState(() => {
+    try {
+      return (typeof window !== 'undefined' && window.localStorage?.getItem('alethian_theme')) || 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const root = window.document.documentElement;
     if (theme === 'dark') {
       root.classList.add('dark');
     } else {
       root.classList.remove('dark');
     }
-    localStorage.setItem('alethian_theme', theme);
+    try {
+      window.localStorage?.setItem('alethian_theme', theme);
+    } catch {
+      // Ignore in environments where storage is blocked or mock-disabled
+    }
   }, [theme]);
 
   const toggleTheme = () => {

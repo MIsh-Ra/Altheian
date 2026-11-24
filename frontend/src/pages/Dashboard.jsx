@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Client from '../api/client';
 import { FileText, Upload, Plus, CheckCircle, Clock, AlertTriangle, ArrowRight, Loader2, RefreshCcw } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
+import AgentOrb from '../components/common/AgentOrb';
 
 export default function Dashboard() {
     const [documents, setDocuments] = useState([]);
@@ -68,8 +69,9 @@ export default function Dashboard() {
         const processingStatuses = ['pending', 'ingesting', 'analyzing', 'processing'];
         if (processingStatuses.includes(status)) {
             return (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-sm text-xs font-bold bg-secondary-fixed-dim text-on-secondary-fixed">
-                    <Loader2 className="w-3 h-3 mr-1 animate-spin" /> Ingesting
+                <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-bold bg-secondary-fixed-dim text-on-secondary-fixed space-x-1.5">
+                    <AgentOrb stage={status} size={20} />
+                    <span>Ingesting</span>
                 </span>
             );
         }
@@ -123,11 +125,17 @@ export default function Dashboard() {
                     disabled={uploading}
                 />
                 <div className="flex flex-col items-center">
-                    <div className="p-4 bg-primary-container rounded-full group-hover:bg-primary transition-colors text-on-primary shadow-ambient">
-                        <Upload className="w-8 h-8" />
-                    </div>
+                    {uploading ? (
+                        <div className="p-2 flex items-center justify-center">
+                            <AgentOrb state="working" size={64} />
+                        </div>
+                    ) : (
+                        <div className="p-4 bg-primary-container rounded-full group-hover:bg-primary transition-colors text-on-primary shadow-ambient">
+                            <Upload className="w-8 h-8" />
+                        </div>
+                    )}
                     <h3 className="mt-6 text-lg font-bold tracking-tight text-on-surface">
-                        {uploading ? "Ingesting Evidence..." : "Start New Forensic Analysis"}
+                        {uploading ? "Ingesting Evidence Into Pipeline..." : "Start New Forensic Analysis"}
                     </h3>
                     <p className="mt-2 text-sm font-medium text-on-surface-variant max-w-md">Drag and drop student thesis submissions (PDF) here to initialize the Web Dragnet and Internal Similarity pipelines.</p>
                 </div>
@@ -143,8 +151,8 @@ export default function Dashboard() {
                 </div>
                 
                 {loading ? (
-                    <div className="p-12 text-center text-on-surface-variant flex flex-col justify-center items-center h-full">
-                        <Loader2 className="w-8 h-8 animate-spin mb-4" />
+                    <div className="p-12 text-center text-on-surface-variant flex flex-col justify-center items-center h-full space-y-4">
+                        <AgentOrb state="solving" size={64} />
                         <span className="font-medium text-sm">Synchronizing Database...</span>
                     </div>
                 ) : (

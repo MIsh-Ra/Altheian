@@ -29,6 +29,7 @@ import PieChart from '../components/report/PieChart';
 import BarChart from '../components/report/BarChart';
 import ExportMenu from '../components/report/ExportMenu';
 import AIDetectionView, { getTierDetails } from '../components/report/AIDetectionView';
+import AgentOrb from '../components/common/AgentOrb';
 import { useReportStore } from '../stores/reportStore';
 
 export default function ReportView() {
@@ -97,21 +98,38 @@ export default function ReportView() {
     }, [wsStatus?.stage, refetch]);
 
     if (loading) return (
-        <div className="flex flex-col items-center justify-center h-full text-on-surface-variant font-mono tracking-widest text-sm">
-            <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary" />
-            ACQUIRING FORENSIC DATA...
+        <div className="flex flex-col items-center justify-center h-full text-on-surface-variant font-mono tracking-widest text-sm space-y-4">
+            <AgentOrb state="solving" size={64} />
+            <div className="text-on-surface font-semibold tracking-wider">ACQUIRING FORENSIC DATA...</div>
         </div>
     );
     
     if (documentData && ['pending', 'ingesting', 'analyzing', 'processing'].includes(documentData.status)) {
+        const activeStage = wsStatus?.stage || documentData.status;
+        const stageHeading = 
+            activeStage === 'web_dragnet' ? 'Web Dragnet In Progress' :
+            activeStage === 'similarity' ? 'Scanning Vector Archives' :
+            activeStage === 'indexing' ? 'Indexing Document Into Corpus' :
+            activeStage === 'report_generation' ? 'Synthesizing Forensic Report' :
+            'Ingesting Evidence';
+
         return (
-            <div className="flex flex-col items-center justify-center h-full bg-surface">
-                <Loader2 className="w-12 h-12 text-on-surface animate-spin mb-6" />
-                <h2 className="text-xl font-bold tracking-tight text-on-surface uppercase border-b-2 border-primary pb-2 mb-4">Ingesting Evidence</h2>
-                <p className="text-on-surface-variant font-mono text-sm uppercase tracking-widest mb-8">{wsStatus?.message || `STATUS: ${documentData.status}`}</p>
+            <div className="flex flex-col items-center justify-center h-full bg-surface p-8">
+                <div className="mb-6 drop-shadow-md">
+                    <AgentOrb stage={activeStage} size={64} />
+                </div>
+                <h2 className="text-xl font-bold tracking-tight text-on-surface uppercase border-b-2 border-primary pb-2 mb-4">
+                    {stageHeading}
+                </h2>
+                <p className="text-on-surface-variant font-mono text-sm uppercase tracking-widest mb-8 text-center max-w-lg">
+                    {wsStatus?.message || `STATUS: ${documentData.status}`}
+                </p>
                 {wsStatus?.progress > 0 && (
-                    <div className="w-96 bg-surface-container-highest h-1 overflow-hidden relative">
-                        <div className="absolute top-0 left-0 bottom-0 bg-primary transition-all duration-300" style={{ width: `${wsStatus.progress}%` }}></div>
+                    <div className="w-96 bg-surface-container-highest h-1.5 rounded-full overflow-hidden relative shadow-inner">
+                        <div 
+                            className="absolute top-0 left-0 bottom-0 bg-primary transition-all duration-300 rounded-full" 
+                            style={{ width: `${wsStatus.progress}%` }}
+                        ></div>
                     </div>
                 )}
             </div>
