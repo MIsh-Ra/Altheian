@@ -44,10 +44,10 @@ describe('ExportMenu Component', () => {
 
     it('renders dual-action download options, JSON, and print buttons', () => {
         render(<ExportMenu />);
-        expect(screen.getByText('Full Audit (PDF)')).toBeInTheDocument();
-        expect(screen.getByText('Summary Only')).toBeInTheDocument();
+        expect(screen.getByText(/Full audit \(PDF\)/i)).toBeInTheDocument();
+        expect(screen.getByText(/Summary only/i)).toBeInTheDocument();
         expect(screen.getByText('JSON')).toBeInTheDocument();
-        expect(screen.getByText('PRINT')).toBeInTheDocument();
+        expect(screen.getByText(/Print/i)).toBeInTheDocument();
     });
 
     it('triggers full forensic bundle pdf export on primary button click', async () => {
@@ -55,7 +55,7 @@ describe('ExportMenu Component', () => {
         Client.reports.exportPdf.mockResolvedValueOnce(mockBlob);
 
         render(<ExportMenu />);
-        fireEvent.click(screen.getByText('Full Audit (PDF)'));
+        fireEvent.click(screen.getByText(/Full audit \(PDF\)/i));
 
         await waitFor(() => {
             expect(Client.reports.exportPdf).toHaveBeenCalledWith(undefined, 'bundle');
@@ -68,7 +68,7 @@ describe('ExportMenu Component', () => {
         Client.reports.exportPdf.mockResolvedValueOnce(mockBlob);
 
         render(<ExportMenu />);
-        fireEvent.click(screen.getByText('Summary Only'));
+        fireEvent.click(screen.getByText(/Summary only/i));
 
         await waitFor(() => {
             expect(Client.reports.exportPdf).toHaveBeenCalledWith(undefined, 'summary');
@@ -82,7 +82,7 @@ describe('ExportMenu Component', () => {
         const consoleMock = vi.spyOn(console, 'error').mockImplementation(() => {});
 
         render(<ExportMenu />);
-        fireEvent.click(screen.getByText('Full Audit (PDF)'));
+        fireEvent.click(screen.getByText(/Full audit \(PDF\)/i));
 
         await waitFor(() => {
             expect(alertMock).toHaveBeenCalledWith('PDF export failed. Please try again.');

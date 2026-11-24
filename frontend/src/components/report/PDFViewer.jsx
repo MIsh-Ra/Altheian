@@ -292,22 +292,125 @@ export default function PDFViewer({
         return `${blobUrl}${hash}`;
     };
 
-    const pdfUrl = getPdfUrl();
+    // Smoothly update PDF iframe navigation without destroying the DOM iframe
+    useEffect(() => {
+        if (!iframeRef.current || !blobUrl) return;
+        const targetUrl = getPdfUrl();
+        try {
+            if (iframeRef.current.contentWindow && iframeRef.current.src) {
+                iframeRef.current.contentWindow.location.replace(targetUrl);
+            } else {
+                iframeRef.current.src = targetUrl;
+            }
+        } catch {
+            iframeRef.current.src = targetUrl;
+        }
+    }, [currentPage, zoom, blobUrl]);
 
     return (
         <div 
             ref={viewerContainerRef} 
             className={`flex flex-col h-full w-full bg-surface overflow-hidden relative select-none ${className}`}
         >
-            {/* Pinned Professional Turnitin-Style Legend Bar */}
-            <div className="flex-none bg-surface-container border-b border-ghost px-4 py-2 flex flex-wrap items-center justify-between gap-2.5 text-xs select-none shadow-xs z-10">
-                <div className="flex items-center flex-wrap gap-4">
-                    {/* Plagiarism Toggle & Sub-Keys */}
-                    <div className="flex items-center space-x-2">
+            {/* Consolidated Document Controls & Layer Bar */}
+            <div className="flex-none bg-surface-container-low border-b border-ghost px-3 py-1.5 flex flex-wrap items-center justify-between gap-2.5 text-xs select-none z-10 shadow-xs">
+                {/* Left: Page Navigation & Zoom */}
+                <div className="flex items-center space-x-2">
+                    {/* Page Navigation */}
+                    <div className="flex items-center space-x-1">
+                        <button
+                            type="button"
+                            onClick={handlePrev}
+                            disabled={currentPage <= 1}
+                            aria-label="Previous Page"
+                            title="Previous page"
+                            className="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                            <ChevronLeft className="w-4 h-4" />
+                        </button>
+
+                        <div className="flex items-center space-x-1 text-on-surface font-mono text-xs">
+                            <span className="text-[11px] text-on-surface-variant font-sans">Page</span>
+                            <input
+                                type="number"
+                                min={1}
+                                max={effectiveTotalPages}
+                                value={pageInput}
+                                onChange={handlePageInputChange}
+                                onKeyDown={handlePageInputSubmit}
+                                onBlur={handlePageInputSubmit}
+                                aria-label="Current Page Number"
+                                className="w-10 px-1 py-0.5 text-center text-xs font-mono font-semibold rounded bg-surface border border-ghost focus:outline-hidden focus:ring-1 focus:ring-primary text-on-surface"
+                            />
+                            <span className="text-on-surface-variant">of</span>
+                            <span className="font-semibold tabular-nums">{effectiveTotalPages}</span>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={handleNext}
+                            disabled={currentPage >= effectiveTotalPages}
+                            aria-label="Next Page"
+                            title="Next page"
+                            className="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                            <ChevronRight className="w-4 h-4" />
+                        </button>
+                    </div>
+
+                    <div className="h-3.5 w-px bg-ghost hidden sm:block" />
+
+                    {/* Zoom Controls */}
+                    <div className="flex items-center space-x-1">
+                        <button
+                            type="button"
+                            onClick={handleZoomOut}
+                            disabled={zoom === 'fit'}
+                            aria-label="Zoom Out"
+                            title="Zoom out"
+                            className="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                            <ZoomOut className="w-3.5 h-3.5" />
+                        </button>
+
+                        <div className="flex items-center bg-surface-container rounded p-0.5 border border-ghost">
+                            {zoomLevels.map((lvl) => (
+                                <button
+                                    key={lvl}
+                                    type="button"
+                                    onClick={() => setZoom(lvl)}
+                                    className={`px-1.5 py-0.5 text-[10px] rounded font-medium transition-colors cursor-pointer ${
+                                        zoom === lvl
+                                            ? 'bg-surface text-on-surface shadow-2xs font-semibold'
+                                            : 'text-on-surface-variant hover:text-on-surface'
+                                    }`}
+                                >
+                                    {zoomLabels[lvl]}
+                                </button>
+                            ))}
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={handleZoomIn}
+                            disabled={zoom === '150'}
+                            aria-label="Zoom In"
+                            title="Zoom in"
+                            className="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                            <ZoomIn className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Center: In-Situ Turnitin Highlight Legend & Toggles */}
+                <div className="flex items-center space-x-3">
+                    {/* Plagiarism Toggle */}
+                    <div className="flex items-center space-x-1.5">
                         <button
                             type="button"
                             onClick={() => setShowPlag(!showPlag)}
-                            className="flex items-center space-x-1.5 font-medium text-on-surface hover:text-primary transition-colors cursor-pointer"
+                            className="flex items-center space-x-1 font-medium text-on-surface hover:text-primary transition-colors cursor-pointer"
                             title="Toggle plagiarism highlights in vector view"
                         >
                             {showPlag ? (
@@ -315,33 +418,33 @@ export default function PDFViewer({
                             ) : (
                                 <Square className="w-3.5 h-3.5 text-on-surface-variant" />
                             )}
-                            <span className="text-xs font-semibold">Plagiarism</span>
+                            <span className="text-xs font-medium">Plagiarism</span>
                         </button>
 
-                        <div className={`flex items-center space-x-2.5 text-[11px] transition-opacity ${showPlag ? 'opacity-100' : 'opacity-40'}`}>
-                            <div className="flex items-center space-x-1" title="Public web sources and documentation">
-                                <span className="w-2.5 h-1 bg-blue-500 rounded-full"></span>
-                                <span className="text-on-surface-variant">Web ({webMatchCount})</span>
-                            </div>
-                            <div className="flex items-center space-x-1" title="Past student theses and university archive">
-                                <span className="w-2.5 h-1 bg-red-500 rounded-full"></span>
-                                <span className="text-on-surface-variant">Archive ({instMatchCount})</span>
-                            </div>
-                            <div className="flex items-center space-x-1" title="Paraphrased or restructured phrasing">
-                                <span className="w-2.5 h-1 bg-orange-500 rounded-full"></span>
-                                <span className="text-on-surface-variant">Paraphrase ({paraMatchCount})</span>
-                            </div>
+                        <div className={`flex items-center space-x-2 text-[10px] font-mono transition-opacity ${showPlag ? 'opacity-100' : 'opacity-40'}`}>
+                            <span className="flex items-center space-x-1" title="Internet & web matches">
+                                <span className="w-2 h-1 bg-blue-500 rounded-full"></span>
+                                <span className="text-on-surface-variant">{webMatchCount}</span>
+                            </span>
+                            <span className="flex items-center space-x-1" title="Institutional repository matches">
+                                <span className="w-2 h-1 bg-red-500 rounded-full"></span>
+                                <span className="text-on-surface-variant">{instMatchCount}</span>
+                            </span>
+                            <span className="flex items-center space-x-1" title="Paraphrase matches">
+                                <span className="w-2 h-1 bg-orange-500 rounded-full"></span>
+                                <span className="text-on-surface-variant">{paraMatchCount}</span>
+                            </span>
                         </div>
                     </div>
 
                     <div className="h-3.5 w-px bg-ghost hidden sm:block" />
 
-                    {/* Turnitin AI Writing Toggle */}
-                    <div className="flex items-center space-x-2">
+                    {/* AI Writing Toggle */}
+                    <div className="flex items-center space-x-1.5">
                         <button
                             type="button"
                             onClick={() => setShowAi(!showAi)}
-                            className="flex items-center space-x-1.5 font-medium text-on-surface hover:text-sky-600 transition-colors cursor-pointer"
+                            className="flex items-center space-x-1 font-medium text-on-surface hover:text-sky-600 transition-colors cursor-pointer"
                             title="Toggle in-situ AI writing highlights"
                         >
                             {showAi ? (
@@ -349,154 +452,27 @@ export default function PDFViewer({
                             ) : (
                                 <Square className="w-3.5 h-3.5 text-on-surface-variant" />
                             )}
-                            <span className="text-xs font-semibold flex items-center space-x-1">
-                                <span className="w-2 h-2 rounded-full bg-sky-500 inline-block mr-1"></span>
+                            <span className="text-xs font-medium flex items-center space-x-1">
+                                <span className="w-2 h-2 rounded-full bg-sky-500 inline-block mr-0.5"></span>
                                 <span>AI Writing (Cyan)</span>
                             </span>
                         </button>
-                        <span className="text-[11px] font-mono text-sky-600 dark:text-sky-400">
-                            ({aiFlaggedCount} flagged)
+                        <span className="text-[10px] font-mono text-sky-600 dark:text-sky-400">
+                            ({aiFlaggedCount})
                         </span>
                     </div>
                 </div>
 
-                {/* Quick Presets */}
-                <div className="flex items-center space-x-1.5">
-                    <span className="text-[10px] text-on-surface-variant font-mono uppercase tracking-wider hidden md:inline">
-                        Preset:
-                    </span>
-                    <button
-                        type="button"
-                        onClick={() => { setShowPlag(true); setShowAi(true); }}
-                        className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors cursor-pointer ${
-                            showPlag && showAi
-                                ? 'bg-surface text-on-surface border border-ghost shadow-2xs font-semibold'
-                                : 'text-on-surface-variant hover:text-on-surface'
-                        }`}
-                    >
-                        All
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => { setShowPlag(true); setShowAi(false); }}
-                        className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors cursor-pointer ${
-                            showPlag && !showAi
-                                ? 'bg-surface text-on-surface border border-ghost shadow-2xs font-semibold'
-                                : 'text-on-surface-variant hover:text-on-surface'
-                        }`}
-                    >
-                        Plagiarism
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => { setShowPlag(false); setShowAi(true); }}
-                        className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors cursor-pointer ${
-                            !showPlag && showAi
-                                ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border border-sky-300 shadow-2xs font-semibold'
-                                : 'text-on-surface-variant hover:text-on-surface'
-                        }`}
-                    >
-                        AI Writing
-                    </button>
-                </div>
-            </div>
-
-            {/* Document Controls Bar: Navigation, Zoom & Actions */}
-            <div className="flex-none bg-surface-container-low border-b border-ghost px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-xs select-none z-10">
-                {/* Page Navigation */}
-                <div className="flex items-center space-x-1.5">
-                    <button
-                        type="button"
-                        onClick={handlePrev}
-                        disabled={currentPage <= 1}
-                        aria-label="Previous Page"
-                        title="Previous page"
-                        className="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    >
-                        <ChevronLeft className="w-4 h-4" />
-                    </button>
-
-                    <div className="flex items-center space-x-1 text-on-surface font-mono text-xs">
-                        <span className="text-[11px] text-on-surface-variant font-sans">Page</span>
-                        <input
-                            type="number"
-                            min={1}
-                            max={effectiveTotalPages}
-                            value={pageInput}
-                            onChange={handlePageInputChange}
-                            onKeyDown={handlePageInputSubmit}
-                            onBlur={handlePageInputSubmit}
-                            aria-label="Current Page Number"
-                            className="w-10 px-1 py-0.5 text-center text-xs font-mono font-semibold rounded bg-surface border border-ghost focus:outline-hidden focus:ring-1 focus:ring-primary text-on-surface"
-                        />
-                        <span className="text-on-surface-variant">of</span>
-                        <span className="font-semibold tabular-nums">{effectiveTotalPages}</span>
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={handleNext}
-                        disabled={currentPage >= effectiveTotalPages}
-                        aria-label="Next Page"
-                        title="Next page"
-                        className="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    >
-                        <ChevronRight className="w-4 h-4" />
-                    </button>
-                </div>
-
-                {/* Zoom Controls */}
-                <div className="flex items-center space-x-1.5">
-                    <button
-                        type="button"
-                        onClick={handleZoomOut}
-                        disabled={zoom === 'fit'}
-                        aria-label="Zoom Out"
-                        title="Zoom out"
-                        className="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    >
-                        <ZoomOut className="w-3.5 h-3.5" />
-                    </button>
-
-                    <div className="flex items-center bg-surface-container rounded p-0.5 border border-ghost">
-                        {zoomLevels.map((lvl) => (
-                            <button
-                                key={lvl}
-                                type="button"
-                                onClick={() => setZoom(lvl)}
-                                className={`px-2 py-0.5 text-[10px] rounded font-medium transition-colors cursor-pointer ${
-                                    zoom === lvl
-                                        ? 'bg-surface text-on-surface shadow-2xs font-semibold'
-                                        : 'text-on-surface-variant hover:text-on-surface'
-                                }`}
-                            >
-                                {zoomLabels[lvl]}
-                            </button>
-                        ))}
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={handleZoomIn}
-                        disabled={zoom === '150'}
-                        aria-label="Zoom In"
-                        title="Zoom in"
-                        className="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    >
-                        <ZoomIn className="w-3.5 h-3.5" />
-                    </button>
-                </div>
-
-                {/* Actions: Print, Fullscreen, Download, Refresh */}
+                {/* Right: Actions */}
                 <div className="flex items-center space-x-1">
                     <button
                         type="button"
                         onClick={handlePrint}
                         aria-label="Print PDF"
                         title="Print vector report"
-                        className="p-1.5 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
+                        className="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
                     >
-                        <Printer className="w-4 h-4" />
+                        <Printer className="w-3.5 h-3.5" />
                     </button>
 
                     <button
@@ -504,9 +480,9 @@ export default function PDFViewer({
                         onClick={toggleFullscreen}
                         aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
                         title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-                        className="p-1.5 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
+                        className="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
                     >
-                        {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+                        {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
                     </button>
 
                     <button
@@ -514,9 +490,9 @@ export default function PDFViewer({
                         onClick={handleDownload}
                         aria-label="Download Vector PDF"
                         title="Download vector PDF"
-                        className="p-1.5 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
+                        className="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
                     >
-                        <Download className="w-4 h-4" />
+                        <Download className="w-3.5 h-3.5" />
                     </button>
 
                     <button
@@ -524,7 +500,7 @@ export default function PDFViewer({
                         onClick={handleReload}
                         aria-label="Reload PDF Stream"
                         title="Reload vector PDF stream"
-                        className="p-1.5 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
+                        className="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
                     >
                         <RotateCcw className="w-3.5 h-3.5" />
                     </button>
@@ -536,8 +512,8 @@ export default function PDFViewer({
                 {loading && (
                     <div className="flex flex-col items-center justify-center h-full text-neutral-300 font-mono tracking-widest text-xs space-y-3">
                         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                        <div className="font-semibold tracking-wider text-neutral-200">ACQUIRING VECTOR PDF STREAM...</div>
-                        <div className="text-[11px] text-neutral-400">Loading in-situ forensic highlights & vector coordinates</div>
+                        <div className="font-semibold tracking-wider text-neutral-200">Loading vector PDF stream...</div>
+                        <div className="text-[11px] text-neutral-400">Rendering in-situ forensic highlights & vector coordinates</div>
                     </div>
                 )}
 
@@ -582,7 +558,7 @@ export default function PDFViewer({
                     >
                         <iframe
                             ref={iframeRef}
-                            key={`pdf-${blobUrl}-p${currentPage}-z${zoom}`}
+                            key={`pdf-${blobUrl}`}
                             src={pdfUrl}
                             title="Alethian Forensic Vector PDF Document"
                             className="w-full h-full border-0 rounded-xs shadow-2xl bg-white"

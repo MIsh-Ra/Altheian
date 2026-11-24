@@ -30,7 +30,7 @@ describe('TextOverlay Component', () => {
         const marks = container.querySelectorAll('mark');
         expect(marks.length).toBe(1);
         expect(marks[0].textContent).toBe('source document');
-        expect(marks[0].className).toContain('bg-error-container/30'); // Exact match color (forensic design system)
+        expect(marks[0].style.borderBottom).toContain('2.5px solid');
         
         // Assert click behavior
         fireEvent.click(marks[0]);

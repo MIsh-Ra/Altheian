@@ -69,19 +69,13 @@ export default function ReportView() {
         }
     };
 
-    // When a match is selected, scroll the doc viewer to that page and open diff
+    // When a match is selected, sync doc viewer to that match page and open diff
     useEffect(() => {
         if (!selectedMatchId) return;
         setDiffDismissed(false);
         const match = (report?.matches || []).find(m => m.id === selectedMatchId);
-        if (match?.submitted_page) {
-            if (setCurrentPage) {
-                setCurrentPage(match.submitted_page);
-            }
-            setTimeout(() => {
-                const el = document.getElementById(`page-${match.submitted_page}`);
-                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 60);
+        if (match?.submitted_page && setCurrentPage) {
+            setCurrentPage(match.submitted_page);
         }
     }, [selectedMatchId, report?.matches, setCurrentPage]);
 

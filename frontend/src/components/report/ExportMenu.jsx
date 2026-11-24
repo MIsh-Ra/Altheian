@@ -76,7 +76,7 @@ export default function ExportMenu() {
                     ? <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" strokeWidth={1.5} />
                     : <Download className="w-3.5 h-3.5 text-primary" strokeWidth={1.5} />}
                 <span>
-                    {exporting === 'bundle' ? 'GENERATING AUDIT...' : 'Full Audit (PDF)'}
+                    {exporting === 'bundle' ? 'Generating audit...' : 'Full audit (PDF)'}
                 </span>
             </button>
 
@@ -93,7 +93,7 @@ export default function ExportMenu() {
                     ? <Loader2 className="w-3.5 h-3.5 animate-spin text-secondary" strokeWidth={1.5} />
                     : <FileCheck className="w-3.5 h-3.5 text-on-surface-variant" strokeWidth={1.5} />}
                 <span>
-                    {exporting === 'summary' ? 'GENERATING SUMMARY...' : 'Summary Only'}
+                    {exporting === 'summary' ? 'Generating summary...' : 'Summary only'}
                 </span>
             </button>
 
@@ -122,7 +122,7 @@ export default function ExportMenu() {
                 className={btnBase}
             >
                 <Printer className="w-3.5 h-3.5 text-on-surface-variant" strokeWidth={1.5} />
-                <span>PRINT</span>
+                <span>Print</span>
             </button>
         </div>
     );
