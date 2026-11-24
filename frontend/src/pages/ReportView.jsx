@@ -29,6 +29,7 @@ import PieChart from '../components/report/PieChart';
 import BarChart from '../components/report/BarChart';
 import ExportMenu from '../components/report/ExportMenu';
 import AIDetectionView, { getTierDetails } from '../components/report/AIDetectionView';
+import AIInspectorSidebar from '../components/report/AIInspectorSidebar';
 import AgentOrb from '../components/common/AgentOrb';
 import InfoTooltip from '../components/common/InfoTooltip';
 import { getTermLabel } from '../utils/glossary';
@@ -249,12 +250,22 @@ export default function ReportView() {
 
             {/* View Switching Stage */}
             {activeTab === 'ai_detection' ? (
-                <div className="flex-1 overflow-hidden">
-                    <AIDetectionView 
-                        aiResult={report?.ai_detection || aiDetectionResult}
-                        documentText={report.document_text} 
-                        pageTexts={report.page_texts} 
-                    />
+                <div className="flex flex-1 min-w-0 overflow-hidden p-4 space-x-4 print:p-0 print:space-x-0 print:block">
+                    {/* Main Document Inspector Area with Turnitin in-situ cyan AI highlights */}
+                    <main className="flex-1 min-w-0 bg-surface border border-ghost rounded flex flex-col overflow-hidden relative print:border-none print:rounded-none print:block print:overflow-visible print:h-auto">
+                        <div className="flex-1 overflow-hidden relative print:overflow-visible print:h-auto print:block">
+                            <TextOverlay
+                                pageTexts={report.page_texts || []}
+                                documentText={report.document_text || ""}
+                                matches={filteredMatches}
+                                aiWindows={report.ai_detection?.windows || aiDetectionResult?.windows || []}
+                                activeTab="ai_detection"
+                            />
+                        </div>
+                    </main>
+
+                    {/* Right AI Inspector Sidebar */}
+                    <AIInspectorSidebar aiResult={report?.ai_detection || aiDetectionResult} />
                 </div>
             ) : activeTab === 'overview' ? (
                 /* Executive Summary & Analytics Overview */
@@ -542,6 +553,8 @@ export default function ReportView() {
                                 pageTexts={report.page_texts || []}
                                 documentText={report.document_text || ""}
                                 matches={filteredMatches}
+                                aiWindows={report.ai_detection?.windows || aiDetectionResult?.windows || []}
+                                activeTab="plagiarism"
                             />
                         </div>
                     </main>
