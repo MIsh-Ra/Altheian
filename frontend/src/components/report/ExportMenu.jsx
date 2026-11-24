@@ -1,22 +1,24 @@
 import { useState } from 'react';
-import { Download, FileJson, Printer, Loader2 } from 'lucide-react';
+import { Download, FileJson, Printer, Loader2, FileCheck } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import Client from '../../api/client';
 
 export default function ExportMenu() {
     const { id } = useParams();
-    const [exporting, setExporting] = useState(null); // 'pdf' | 'json' | 'print' | null
+    const [exporting, setExporting] = useState(null); // 'bundle' | 'summary' | 'json' | 'print' | null
 
-    const handlePdfExport = async () => {
+    const handlePdfExport = async (mode = 'bundle') => {
         if (exporting) return;
-        setExporting('pdf');
+        setExporting(mode);
         try {
-            // Call the backend endpoint which returns a proper reportlab PDF
-            const blob = await Client.reports.exportPdf(id);
+            // Call the backend endpoint with selected export mode
+            const blob = await Client.reports.exportPdf(id, mode);
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `alethian_report_${id ? id.substring(0, 8) : 'report'}.pdf`;
+            link.download = mode === 'bundle'
+                ? `alethian_forensic_bundle_${id ? id.substring(0, 8) : 'report'}.pdf`
+                : `alethian_executive_summary_${id ? id.substring(0, 8) : 'report'}.pdf`;
             document.body.appendChild(link);
             link.click();
             link.remove();
@@ -61,19 +63,39 @@ export default function ExportMenu() {
 
     return (
         <div className="flex items-center space-x-2" id="export-menu">
+            {/* Primary Option: Full Forensic Audit (Bundle) */}
             <button
-                id="export-pdf-btn"
-                onClick={handlePdfExport}
+                id="export-bundle-pdf-btn"
+                onClick={() => handlePdfExport('bundle')}
                 disabled={!!exporting}
-                title="Export full forensic PDF report"
-                className={btnBase}
+                title="Download Full Forensic Audit (Summary + Highlighted Thesis PDF)"
+                className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded text-xs font-medium border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50 select-none shadow-xs"
             >
-                {exporting === 'pdf'
-                    ? <Loader2 className="w-3.5 h-3.5 animate-spin text-secondary" strokeWidth={1.5} />
-                    : <Download className="w-3.5 h-3.5 text-on-surface-variant" strokeWidth={1.5} />}
-                <span>{exporting === 'pdf' ? 'GENERATING...' : 'EXPORT PDF'}</span>
+                {exporting === 'bundle'
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" strokeWidth={1.5} />
+                    : <Download className="w-3.5 h-3.5 text-primary" strokeWidth={1.5} />}
+                <span className="truncate max-w-[280px] sm:max-w-none">
+                    {exporting === 'bundle' ? 'GENERATING AUDIT...' : 'Download Full Forensic Audit (Summary + Highlighted Thesis PDF)'}
+                </span>
             </button>
 
+            {/* Secondary Option: Executive Summary Only */}
+            <button
+                id="export-summary-pdf-btn"
+                onClick={() => handlePdfExport('summary')}
+                disabled={!!exporting}
+                title="Download Executive Summary Only (3-Page Certificate PDF)"
+                className={btnBase}
+            >
+                {exporting === 'summary'
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin text-secondary" strokeWidth={1.5} />
+                    : <FileCheck className="w-3.5 h-3.5 text-on-surface-variant" strokeWidth={1.5} />}
+                <span className="truncate max-w-[260px] sm:max-w-none">
+                    {exporting === 'summary' ? 'GENERATING SUMMARY...' : 'Download Executive Summary Only (3-Page Certificate PDF)'}
+                </span>
+            </button>
+
+            {/* JSON Data Export */}
             <button
                 id="export-json-btn"
                 onClick={handleJsonExport}
@@ -87,6 +109,7 @@ export default function ExportMenu() {
                 <span>JSON</span>
             </button>
 
+            {/* Browser Print Engine */}
             <button
                 id="print-btn"
                 onClick={handlePrint}
@@ -100,4 +123,3 @@ export default function ExportMenu() {
         </div>
     );
 }
-

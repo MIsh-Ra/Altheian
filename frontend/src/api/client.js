@@ -77,9 +77,23 @@ const Client = {
             const response = await api.post(`/reports/${documentId}/review`, data);
             return response.data;
         },
-        exportPdf: async (documentId) => {
-            const response = await api.get(`/reports/${documentId}/export/pdf`, { responseType: 'blob' });
-            return response.data; // returns Blob — caller handles download
+        exportPdf: async (documentId, mode = 'bundle') => {
+            try {
+                const response = await api.get(`/reports/${documentId}/export-pdf`, { 
+                    params: { mode },
+                    responseType: 'blob' 
+                });
+                return response.data; // returns Blob — caller handles download
+            } catch (err) {
+                if (err.response && err.response.status === 404) {
+                    const fallback = await api.get(`/reports/${documentId}/export/pdf`, { 
+                        params: { mode },
+                        responseType: 'blob' 
+                    });
+                    return fallback.data;
+                }
+                throw err;
+            }
         },
         exportJson: async (documentId) => {
             const response = await api.get(`/reports/${documentId}/export/json`);
