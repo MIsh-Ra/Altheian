@@ -993,6 +993,8 @@ def _build_pdf(report_data: dict, include_excluded: bool = False) -> io.BytesIO:
 
             raw_sub = m.get("submitted_text") or ""
             raw_src = m.get("source_text") or ""
+            submitted_text = html.escape(raw_sub[:300])
+            source_text = html.escape(raw_src[:300])
             # Context classification & guidance
             sub_lower = raw_sub.lower()
             is_template = any(phrase in sub_lower for phrase in [
