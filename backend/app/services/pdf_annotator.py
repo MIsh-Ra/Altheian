@@ -102,6 +102,113 @@ def _search_text_on_page(page: pymupdf.Page, query: str) -> list[pymupdf.Rect]:
     return []
 
 
+def find_original_pdf_path(
+    report_data: dict[str, Any] | None = None,
+    doc_obj: Any = None,
+    explicit_path: str | Path | None = None,
+) -> Path | None:
+    """Multi-tiered resolver to locate the original uploaded PDF on disk.
+
+    Resolution Strategy:
+      1. Direct path check (explicit_path, doc_obj.meta_data["file_path"], or report_data["meta_data"]["file_path"]).
+      2. Document UUID match in candidate storage directories.
+      3. Safe filename match in candidate storage directories.
+      4. Content-addressable SHA-256 hash match across candidate storage directories.
+    """
+    import hashlib
+    import re
+    from app.core.config import settings
+
+    # 1. Direct explicit path check
+    if explicit_path:
+        p = Path(explicit_path)
+        if p.is_file():
+            return p
+
+    # Extract identification hints
+    file_path = None
+    doc_id = None
+    filename = None
+    file_hash = None
+
+    if doc_obj:
+        if getattr(doc_obj, "file_path", None):
+            file_path = str(doc_obj.file_path)
+        if getattr(doc_obj, "meta_data", None) and isinstance(doc_obj.meta_data, dict):
+            file_path = file_path or doc_obj.meta_data.get("file_path")
+        doc_id = getattr(doc_obj, "id", None)
+        filename = getattr(doc_obj, "filename", None)
+        file_hash = getattr(doc_obj, "file_hash", None)
+
+    if report_data:
+        meta = report_data.get("meta_data") or {}
+        if isinstance(meta, dict) and not file_path:
+            file_path = meta.get("file_path")
+        doc_id = doc_id or report_data.get("document_id")
+        filename = filename or report_data.get("filename")
+        file_hash = file_hash or report_data.get("file_hash")
+
+    if file_path:
+        p = Path(file_path)
+        if p.is_file():
+            return p
+
+    # Candidate directories
+    base_dirs: list[Path] = []
+    if getattr(settings, "UPLOAD_DIR", None):
+        base_dirs.append(Path(settings.UPLOAD_DIR))
+
+    curr_file = Path(__file__).resolve()
+    for idx in (2, 3):
+        if idx < len(curr_file.parents):
+            root_candidate = curr_file.parents[idx]
+            base_dirs.append(root_candidate / "uploads")
+            base_dirs.append(root_candidate / "test_documents")
+            base_dirs.append(root_candidate / "Alethian_documents")
+            base_dirs.append(root_candidate / "backend" / "uploads")
+
+    # De-duplicate while preserving order
+    candidate_dirs = [d for i, d in enumerate(base_dirs) if d.is_dir() and d not in base_dirs[:i]]
+
+    # 2. Match by doc_id prefix/contains
+    if doc_id:
+        for cdir in candidate_dirs:
+            for m in cdir.glob(f"*{doc_id}*"):
+                if m.is_file() and m.suffix.lower() == ".pdf":
+                    return m
+
+    # 3. Match by filename / sanitized filename
+    if filename:
+        clean_name = Path(filename).name
+        safe_name = re.sub(r"[^\w\-.]", "_", clean_name)
+        for cdir in candidate_dirs:
+            exact = cdir / clean_name
+            if exact.is_file():
+                return exact
+            exact_safe = cdir / safe_name
+            if exact_safe.is_file():
+                return exact_safe
+            for pattern in (f"*{clean_name}", f"*{safe_name}*"):
+                for m in cdir.glob(pattern):
+                    if m.is_file() and m.suffix.lower() == ".pdf":
+                        return m
+
+    # 4. Content-addressable SHA-256 hash match (infallible fallback)
+    if file_hash:
+        target_hash = file_hash.lower()
+        for cdir in candidate_dirs:
+            for pdf_path in cdir.rglob("*.pdf"):
+                try:
+                    h = hashlib.sha256(pdf_path.read_bytes()).hexdigest()
+                    if h.lower() == target_hash:
+                        logger.info("Recovered document path via SHA-256 match: %s -> %s", target_hash[:12], pdf_path)
+                        return pdf_path
+                except (OSError, PermissionError):
+                    continue
+
+    return None
+
+
 def _synthesize_student_pdf(report_data: dict[str, Any]) -> pymupdf.Document:
     """Generate a clean synthetic document from extracted text when original file is unavailable."""
     doc = pymupdf.open()
@@ -127,6 +234,19 @@ def _synthesize_student_pdf(report_data: dict[str, Any]) -> pymupdf.Document:
             rect = pymupdf.Rect(54, 54, 541, 788)
             page.insert_textbox(rect, chunk, fontsize=10, fontname="helv")
 
+    if len(doc) > 0:
+        first_page = doc[0]
+        banner_rect = pymupdf.Rect(54, 20, 541, 45)
+        first_page.draw_rect(banner_rect, color=(0.9, 0.4, 0.1), fill=(1.0, 0.95, 0.90))
+        first_page.insert_textbox(
+            banner_rect,
+            "ARCHIVAL NOTICE: Original submitted PDF was unavailable on storage. Text shown below is extracted fallback.",
+            fontsize=8,
+            color=(0.8, 0.2, 0.0),
+            fontname="helv",
+            align=pymupdf.TEXT_ALIGN_CENTER,
+        )
+
     return doc
 
 
@@ -144,7 +264,7 @@ def annotate_document_pdf(
     """
     doc: pymupdf.Document | None = None
 
-    # Step 1: Open or synthesize document
+    # Step 1: Open document from provided path or bytes
     if isinstance(original_pdf_bytes_or_path, (str, Path)):
         path_str = str(original_pdf_bytes_or_path)
         if os.path.exists(path_str):
@@ -165,7 +285,25 @@ def annotate_document_pdf(
             except (pymupdf.FileDataError, RuntimeError, OSError, ValueError) as e:
                 logger.warning(f"Could not open PDF from stream: {e}")
 
+    # Fallback to multi-tier path resolution if direct open failed
     if doc is None or len(doc) == 0:
+        recovered = find_original_pdf_path(
+            report_data=report_data,
+            explicit_path=original_pdf_bytes_or_path if isinstance(original_pdf_bytes_or_path, (str, Path)) else None,
+        )
+        if recovered and recovered.is_file():
+            try:
+                doc = pymupdf.open(str(recovered))
+                logger.info("Successfully opened recovered original PDF at: %s", recovered)
+            except (pymupdf.FileDataError, RuntimeError, OSError, ValueError) as e:
+                logger.warning(f"Could not open recovered PDF file {recovered}: {e}")
+
+    if doc is None or len(doc) == 0:
+        logger.error(
+            "Original submitted thesis PDF could not be found on storage for document %s (hash: %s). Falling back to synthetic layout.",
+            report_data.get("document_id"),
+            report_data.get("file_hash"),
+        )
         doc = _synthesize_student_pdf(report_data)
 
     ai_det = report_data.get("ai_detection") or {}

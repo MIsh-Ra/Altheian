@@ -262,3 +262,36 @@ class TestPdfAnnotator:
         assert len(doc) == 2
         assert len(list(doc[0].annots())) >= 1
         assert len(list(doc[1].annots())) >= 1
+        # First page should contain the fallback archival notice banner
+        assert "ARCHIVAL NOTICE" in doc[0].get_text()
+
+    def test_find_original_pdf_path_by_hash_and_metadata(self, tmp_path):
+        """Verify multi-tier path resolver by metadata and SHA-256 content address."""
+        from app.services.pdf_annotator import find_original_pdf_path
+        import hashlib
+
+        # Create dummy PDF in tmp_path
+        sample_doc = pymupdf.open()
+        sample_page = sample_doc.new_page()
+        sample_page.insert_text((50, 50), "Test Document Content for Hash Resolution")
+        pdf_bytes = sample_doc.tobytes()
+        sample_doc.close()
+
+        file_hash = hashlib.sha256(pdf_bytes).hexdigest()
+        target_file = tmp_path / "custom_doc_name.pdf"
+        target_file.write_bytes(pdf_bytes)
+
+        # 1. Direct path in metadata
+        report_data = {
+            "document_id": "test-uuid-1234",
+            "file_hash": file_hash,
+            "filename": "original.pdf",
+            "meta_data": {"file_path": str(target_file)},
+        }
+        assert find_original_pdf_path(report_data=report_data) == target_file
+
+        # 2. Explicit path
+        assert find_original_pdf_path(explicit_path=str(target_file)) == target_file
+
+        # 3. Direct explicit path that does not exist should fall back gracefully
+        assert find_original_pdf_path(explicit_path="/non/existent/path.pdf") is None

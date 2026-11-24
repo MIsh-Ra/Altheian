@@ -154,6 +154,9 @@ def _build_report_data(document_id: str, db: Session) -> dict:
         "document_title": doc.title,
         "document_author": doc.author,
         "document_text": doc.content,
+        "filename": doc.filename,
+        "file_hash": doc.file_hash,
+        "meta_data": doc.meta_data,
         "page_texts": page_texts,
         "page_count": page_count,
         "analyzed_at": report.created_at,
@@ -346,32 +349,25 @@ def export_pdf(
         )
 
     # Bundle mode: locate original document on disk, annotate in-situ, and stitch
-    from pathlib import Path
-    from app.core.config import settings
-    from app.services.pdf_annotator import annotate_document_pdf, stitch_bundle_pdf
+    from app.services.pdf_annotator import (
+        annotate_document_pdf,
+        find_original_pdf_path,
+        stitch_bundle_pdf,
+    )
 
     doc_obj = report.document
-    file_path = None
-    potential_paths = []
+    file_path = find_original_pdf_path(report_data=report_data, doc_obj=doc_obj)
 
-    if doc_obj:
-        if getattr(doc_obj, "file_path", None):
-            potential_paths.append(Path(doc_obj.file_path))
-        if doc_obj.meta_data and isinstance(doc_obj.meta_data, dict):
-            if doc_obj.meta_data.get("file_path"):
-                potential_paths.append(Path(doc_obj.meta_data["file_path"]))
-
-        upload_dir = Path(settings.UPLOAD_DIR) if getattr(settings, "UPLOAD_DIR", None) else (Path(__file__).resolve().parents[3] / "uploads")
-        if upload_dir.exists():
-            if doc_obj.filename:
-                potential_paths.append(upload_dir / doc_obj.filename)
-                potential_paths.extend(list(upload_dir.glob(f"*{doc_obj.filename}")))
-            potential_paths.extend(list(upload_dir.glob(f"*{doc_obj.id}*")))
-
-    for p in potential_paths:
-        if p and p.is_file():
-            file_path = str(p)
-            break
+    # Cache resolved file_path in doc_obj metadata for future zero-latency lookups
+    if file_path and doc_obj:
+        meta = dict(doc_obj.meta_data or {})
+        if meta.get("file_path") != str(file_path):
+            meta["file_path"] = str(file_path)
+            doc_obj.meta_data = meta
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
 
     try:
         annotated_thesis_bytes = annotate_document_pdf(file_path, report_data)
@@ -379,6 +375,7 @@ def export_pdf(
         output_buffer = io.BytesIO(stitched_pdf_bytes)
         output_buffer.seek(0)
     except Exception as exc:
+        logger.exception("Failed to stitch annotated bundle PDF: %s", exc)
         output_buffer = summary_buffer
 
     return StreamingResponse(

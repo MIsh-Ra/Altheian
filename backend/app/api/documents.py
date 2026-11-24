@@ -93,18 +93,18 @@ async def upload_document(
             cloned.originality_score = cloned.report[0].score if cloned.report else None
             return cloned
 
+        doc_id = str(uuid.uuid4())
         safe_name = re.sub(r'[^\w\-.]', '_', file.filename.split('/')[-1].split('\\')[-1])
         # Use a persistent upload directory shared between API and Celery worker
-        if settings.UPLOAD_DIR:
+        if getattr(settings, "UPLOAD_DIR", None):
             upload_dir = Path(settings.UPLOAD_DIR)
         else:
             upload_dir = Path(__file__).resolve().parents[3] / "uploads"
         upload_dir.mkdir(parents=True, exist_ok=True)
-        file_path = str(upload_dir / f"{uuid.uuid4()}_{safe_name}")
+        file_path = str(upload_dir / f"{doc_id}_{safe_name}")
         with open(file_path, "wb") as f:
             f.write(content)
-            
-        doc_id = str(uuid.uuid4())
+
         new_doc = Document(
             id=doc_id,
             title="Unknown Title",
@@ -115,8 +115,13 @@ async def upload_document(
             user_id=current_user.id,
             upload_date=datetime.datetime.now(datetime.timezone.utc),
             status=DocumentStatus.pending,
+            meta_data={
+                "file_path": file_path,
+                "safe_name": safe_name,
+                "original_filename": file.filename,
+            },
         )
-        
+
         db.add(new_doc)
         db.commit()
         db.refresh(new_doc)

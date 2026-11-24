@@ -87,6 +87,12 @@ def analyze_document(self, document_id: str, file_path: str):
             except Exception as e:
                 logger.warning(f"Failed to compute file_hash: {e}")
 
+        # Ensure file_path is recorded in meta_data
+        meta = dict(doc.meta_data or {})
+        if not meta.get("file_path"):
+            meta["file_path"] = str(file_path)
+            doc.meta_data = meta
+
         doc.status = DocumentStatus.processing
         db.commit()
         logger.info(f"[{document_id}] Stage: ingestion")
