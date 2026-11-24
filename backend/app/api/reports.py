@@ -314,6 +314,7 @@ def review_document(document_id: str, req: ReportReviewRequest,
     return {"status": "success", "message": "Document marked as reviewed"}
 
 
+@router.get("/{document_id}/view-pdf")
 @router.get("/{document_id}/export-pdf")
 @router.get("/{document_id}/export/pdf")
 def export_pdf(
